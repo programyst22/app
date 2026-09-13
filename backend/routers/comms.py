@@ -26,6 +26,11 @@ class AppointmentBody(BaseModel):
     customer_id: Optional[str] = None
 
 
+async def _attachments(ids: list) -> list:
+    files = {f["id"]: f async for f in db.files.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "content_type": 1, "filename": 1})}
+    return [{"id": a, "url": signed_url(a), "content_type": files.get(a, {}).get("content_type"), "filename": files.get(a, {}).get("filename")} for a in ids]
+
+
 # ---------------- messages ----------------
 @router.get("/projects/{pid}/messages")
 async def list_messages(pid: str, after: Optional[str] = None, user=Depends(get_current_user)):
@@ -35,12 +40,14 @@ async def list_messages(pid: str, after: Optional[str] = None, user=Depends(get_
         q["created_at"] = {"$gt": after}
     msgs = await find_list("messages", q, sort=("created_at", 1), limit=300)
     for m in msgs:
-        m["attachments"] = [{"id": a, "url": signed_url(a)} for a in m.get("attachment_ids", [])]
+        m["attachments"] = await _attachments(m.get("attachment_ids", []))
         m["mine"] = m.get("sender_id") == user["id"]
     await db.messages.update_many({"project_id": pid, "read_by": {"$ne": user["id"]}}, {"$addToSet": {"read_by": user["id"]}})
+    from routers.realtime import emit, hub
+    await emit(pid, "read", {"user_id": user["id"], "at": iso()})
     cutoff = (now() - timedelta(seconds=6)).isoformat()
     typing = [t["user_name"] async for t in db.typing.find({"project_id": pid, "user_id": {"$ne": user["id"]}, "at": {"$gt": cutoff}}, {"_id": 0})]
-    return {"messages": msgs, "typing": typing}
+    return {"messages": msgs, "typing": typing, "online": hub.online(pid)}
 
 
 @router.post("/projects/{pid}/messages", status_code=201)
@@ -53,12 +60,14 @@ async def send_message(pid: str, body: MessageBody, user=Depends(get_current_use
          "text": body.text.strip(), "attachment_ids": body.attachment_ids, "read_by": [user["id"]], "created_at": iso()}
     await db.messages.insert_one(dict(m))
     await db.typing.delete_many({"project_id": pid, "user_id": user["id"]})
+    m.pop("_id", None)
+    m["attachments"] = await _attachments(body.attachment_ids)
+    from routers.realtime import emit
+    await emit(pid, "message", {"message": {**m, "mine": False}})
     recipients = set(p.get("employee_ids", []) + [p.get("project_manager_id")])
     recipients |= {u["id"] async for u in db.users.find({"customer_id": p["customer_id"]}, {"_id": 0, "id": 1})}
     recipients.discard(user["id"])
     await notify(list(recipients), "Neue Nachricht", f"{name}: {body.text[:80]}", f"/client/chat/{pid}" , "message")
-    m.pop("_id", None)
-    m["attachments"] = [{"id": a, "url": signed_url(a)} for a in body.attachment_ids]
     m["mine"] = True
     return m
 
@@ -68,6 +77,8 @@ async def typing(pid: str, user=Depends(get_current_user)):
     await project_for_user(pid, user)
     name = f"{user.get('first_name','')} {user.get('last_name','')}".strip() or user["email"]
     await db.typing.update_one({"project_id": pid, "user_id": user["id"]}, {"$set": {"user_name": name, "at": iso()}}, upsert=True)
+    from routers.realtime import emit
+    await emit(pid, "typing", {"user_id": user["id"], "user_name": name, "at": iso()})
     return {"ok": True}
 
 

@@ -11,10 +11,12 @@ MEDIA_LIBRARY_TYPES = ALLOWED_MEDIA | {"model/gltf-binary", "model/gltf+json", "
 
 
 async def _file_allowed(f: dict, user: Optional[dict]) -> bool:
+    if f.get("kind") == "library" or f.get("public") is True:
+        return True  # marketing library (logo, portraits, portfolio) is public by design; project files stay private
     if user and is_staff(user):
         return True
     if not user:
-        return f.get("public") is True
+        return False
     if f.get("owner_id") == user["id"]:
         return True
     if f.get("project_id"):
@@ -89,6 +91,8 @@ async def delete_file(fid: str, user=Depends(require_roles(*MANAGEMENT))):
     f = await get_or_404("files", fid)
     if f.get("kind") == "library":
         used = await db.cms.count_documents({"$or": [{"cover_id": fid}, {"photo_ids": fid}]})
+        used += await db.portfolio.count_documents({"$or": [{"cover_id": fid}, {"photo_ids": fid}], "deleted_at": None})
+        used += await db.before_after.count_documents({"$or": [{"before_id": fid}, {"after_id": fid}], "deleted_at": None})
         if used:
             raise HTTPException(409, "Datei wird noch verwendet")
     await db.files.update_one({"id": fid}, {"$set": {"deleted_at": iso(), "deleted_by": user["id"]}})
@@ -122,8 +126,7 @@ async def upload_library(files: List[UploadFile] = File(...), category: str = Fo
             ctype = "model/gltf+json"
         if ctype not in MEDIA_LIBRARY_TYPES:
             raise HTTPException(422, f"Dateityp nicht erlaubt: {ctype}")
-        f.content_type = ctype  # type: ignore
-        d = await store_upload(f, user["id"], "library", {"kind": "library", "category": category, "title": f.filename, "public": public == "true"})
+        d = await store_upload(f, user["id"], "library", {"kind": "library", "category": category, "title": f.filename, "public": public == "true"}, content_type=ctype)
         d["url"] = signed_url(d["id"])
         out.append(d)
     await log_activity(user, "MEDIA_UPLOADED", "file", ",".join(x["id"] for x in out), new={"count": len(out)})

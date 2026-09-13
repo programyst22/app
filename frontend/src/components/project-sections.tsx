@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { api, abs, fmtDate, fmtMoney, getToken, API } from "@/src/api";
+import { useAuth, isManagement } from "@/src/auth";
 import Slider from "@/src/three/Slider";
 import { Caption, Small, H3, Body, Badge, Card, Row, Empty, Loading, Button, ChipRow, useToast, statusColor } from "@/src/components/ui";
 import { makeStyles, useTheme, space, radius } from "@/src/theme";
@@ -122,16 +123,33 @@ export function MediaGrid({ projectId, groupBy = "phase" }: { projectId: string;
   );
 }
 
-export function BeforeAfter({ projectId }: { projectId: string }) {
+export function BeforeAfter({ projectId, editable }: { projectId: string; editable?: boolean }) {
   const s = useStyles();
   const { width } = useWindowDimensions();
+  const qc = useQueryClient();
+  const { user } = useAuth();
   const { data, isLoading } = useQuery({ queryKey: ["before-after", projectId], queryFn: () => api(`/projects/${projectId}/before-after`) });
+  const patch = useMutation({ mutationFn: ({ bid, body }: any) => api(`/projects/${projectId}/before-after/${bid}`, { method: "PATCH", json: body }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["before-after", projectId] }); qc.invalidateQueries({ queryKey: ["public-before-after"] }); } });
   if (isLoading) return <Loading />;
   if (!data?.length) return <Empty icon="git-compare-outline" title="Noch kein Vorher / Nachher" />;
-  return <View style={{ gap: space.xl }}>{data.map((b: any) => <BASlider key={b.id} item={b} width={width - space.xl * 2} styles={s} />)}</View>;
+  return (
+    <View style={{ gap: space.xl }}>
+      {data.map((b: any) => (
+        <View key={b.id} style={{ gap: space.sm }}>
+          <BASlider item={b} width={width - space.xl * 2} styles={s} />
+          {editable ? (
+            <View style={{ flexDirection: "row", gap: space.md, flexWrap: "wrap" }}>
+              <Badge status={b.client_visible ? "COMPLETED" : "PLANNED"} label={b.client_visible ? "Kunde sieht" : "intern"} />
+              {isManagement(user) ? <Button title={b.published ? "Aus Portfolio entfernen" : "Im Portfolio veröffentlichen"} small variant={b.published ? "ghost" : "light"} onPress={() => patch.mutate({ bid: b.id, body: { published: !b.published } })} testID={`ba-publish-${b.id}`} /> : b.published ? <Badge status="ACCEPTED" label="Veröffentlicht" /> : null}
+            </View>
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
 }
 
-function BASlider({ item, width, styles: s }: any) {
+export function BASlider({ item, width, styles: s, dark }: any) {
   const [v, setV] = useState(0.5);
   const h = 260;
   return (
@@ -142,12 +160,14 @@ function BASlider({ item, width, styles: s }: any) {
           <Image source={{ uri: abs(item.before_url) }} style={{ width, height: h }} contentFit="cover" />
         </View>
         <View style={{ position: "absolute", left: width * v - 1, top: 0, width: 2, height: h, backgroundColor: "#FFFFFF" }} />
+        <View style={{ position: "absolute", left: width * v - 18, top: h / 2 - 18, width: 36, height: 36, borderRadius: 18, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}><Ionicons name="code-outline" size={18} color="#1A1A1A" /></View>
         <View style={[s.baLabel, { left: space.md }]}><Caption style={{ color: "#FFFFFF" }}>Vorher</Caption></View>
         <View style={[s.baLabel, { right: space.md }]}><Caption style={{ color: "#FFFFFF" }}>Nachher</Caption></View>
       </View>
       <Slider value={v} onChange={setV} testID={`ba-slider-${item.id}`} />
-      {item.description ? <Small>{item.description}</Small> : null}
-      <Caption>{fmtDate(item.date)}</Caption>
+      {item.title ? <H3 onDark={dark}>{item.title}</H3> : null}
+      {item.description ? <Small onDark={dark}>{item.description}</Small> : null}
+      <Caption onDark={dark}>{fmtDate(item.date)}{item.category ? ` · ${item.category}` : ""}</Caption>
     </View>
   );
 }
@@ -220,6 +240,7 @@ export function Invoices({ projectId }: { projectId?: string }) {
 }
 
 export function Team({ project }: { project: any }) {
+  const s = useStyles();
   const pm = project?.project_manager;
   return (
     <View testID="team-list">
@@ -233,3 +254,4 @@ export function Team({ project }: { project: any }) {
     </View>
   );
 }
+export const useSectionStyles = useStyles;

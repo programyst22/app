@@ -3,7 +3,7 @@ import { View, ScrollView, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/src/api";
+import { api, abs } from "@/src/api";
 import { Eyebrow, H1, Body, Caption, Button, ScreenHeader, Loading } from "@/src/components/ui";
 import { makeStyles, space, radius } from "@/src/theme";
 
@@ -21,12 +21,12 @@ export default function PortfolioDetail() {
       <ScreenHeader title={p?.category} />
       {isLoading || !p ? <Loading /> : (
         <ScrollView contentContainerStyle={{ padding: space.xl, gap: space.lg, paddingBottom: space.xxxl }} testID="portfolio-detail">
-          <Image source={{ uri: p.cover }} style={[s.img, { width: width - space.xl * 2, height: 360 }]} contentFit="cover" transition={400} />
+          <Image source={{ uri: abs(p.cover) }} style={[s.img, { width: width - space.xl * 2, height: 360 }]} contentFit="cover" transition={400} />
           <Eyebrow>{p.category}{p.location ? ` · ${p.location}` : ""}</Eyebrow>
           <H1>{p.title}</H1>
           <Body>{p.description}</Body>
           <Caption>Fotos & Details · {p.photos.length}</Caption>
-          {p.photos.slice(1).map((u: string, i: number) => <Image key={i} source={{ uri: u }} style={[s.img, { width: width - space.xl * 2, height: 280 }]} contentFit="cover" transition={300} />)}
+          {p.photos.slice(1).map((u: string, i: number) => <Image key={i} source={{ uri: abs(u) }} style={[s.img, { width: width - space.xl * 2, height: 280 }]} contentFit="cover" transition={300} />)}
           <Button title="Ähnliches Projekt anfragen" variant="accent" onPress={() => router.push({ pathname: "/anfrage", params: { type: p.category } })} testID="portfolio-request" />
         </ScrollView>
       )}

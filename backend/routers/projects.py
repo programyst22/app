@@ -78,9 +78,12 @@ class DiaryBody(BaseModel):
 class BeforeAfterBody(BaseModel):
     before_id: str
     after_id: str
+    title: str = ""
     description: str = ""
     zone_id: Optional[str] = None
     date: Optional[str] = None
+    client_visible: bool = True
+    published: bool = False
 
 
 class ModelConfig(BaseModel):
@@ -176,6 +179,9 @@ async def update_project(pid: str, body: dict, user=Depends(require_roles(*STAFF
         client_ids = [u["id"] async for u in db.users.find({"customer_id": p["customer_id"]}, {"_id": 0, "id": 1})]
         await notify(client_ids, "Projektfortschritt", f"Ihr Projekt ist jetzt zu {body['progress']}% abgeschlossen", f"/client/project/{pid}", "project")
     await db.projects.update_one({"id": pid}, {"$set": body})
+    if body.get("status") == "COMPLETED" and p.get("status") != "COMPLETED":
+        client_ids = [u["id"] async for u in db.users.find({"customer_id": p["customer_id"]}, {"_id": 0, "id": 1})]
+        await notify(client_ids, "Projekt abgeschlossen", f"{p['number']} wurde abgeschlossen. Vielen Dank für Ihr Vertrauen.", f"/client/project/{pid}", "project", email=True)
     await log_activity(user, "PROJECT_UPDATED", "project", pid, new={k: v for k, v in body.items() if k != "updated_at"})
     return await enrich_project(await get_or_404("projects", pid))
 
@@ -257,8 +263,7 @@ async def upload_model(pid: str, file: UploadFile = File(...), user=Depends(requ
     if not (name.endswith(".glb") or name.endswith(".gltf")):
         raise HTTPException(422, "Nur .glb oder .gltf erlaubt")
     ctype = "model/gltf-binary" if name.endswith(".glb") else "model/gltf+json"
-    file.content_type = ctype  # type: ignore
-    stored = await store_upload(file, user["id"], "models", {"kind": "model", "project_id": pid})
+    stored = await store_upload(file, user["id"], "models", {"kind": "model", "project_id": pid}, content_type=ctype)
     prev = await db.project_3d_models.find_one({"project_id": pid, "deleted_at": None}, {"_id": 0}, sort=[("version", -1)])
     m = {"id": uid(), "project_id": pid, "file_id": stored["id"], "thumbnail_id": None, "version": (prev["version"] + 1) if prev else 1,
          "uploaded_by": user["id"], "camera_config": (prev or {}).get("camera_config") or {"position": [6, 4, 8], "target": [0, 1, 0], "fov": 45, "auto_rotate": True},
@@ -383,7 +388,7 @@ async def create_diary(pid: str, body: DiaryBody, user=Depends(require_roles(*ST
 @router.get("/{pid}/media")
 async def list_media(pid: str, user=Depends(get_current_user)):
     await project_for_user(pid, user)
-    items = await find_list("files", {"project_id": pid, "kind": "media", "deleted_at": None, **visible_filter(user)})
+    items = await find_list("files", {"project_id": pid, "kind": "media", "deleted_at": None, "media_kind": {"$ne": "chat"}, **visible_filter(user)})
     for i in items:
         i["url"] = signed_url(i["id"])
     return items
@@ -391,8 +396,10 @@ async def list_media(pid: str, user=Depends(get_current_user)):
 
 @router.post("/{pid}/media", status_code=201)
 async def upload_media(pid: str, files: List[UploadFile] = File(...), zone_id: str = Form(""), phase: str = Form(""), client_visible: str = Form("true"),
-                       media_kind: str = Form("photo"), user=Depends(require_roles(*STAFF))):
+                       media_kind: str = Form("photo"), user=Depends(get_current_user)):
     p = await project_for_user(pid, user)
+    if not is_staff(user):
+        client_visible, media_kind = "true", "chat"  # clients may only attach to the chat, never curate the gallery
     out = []
     for f in files:
         if f.content_type not in ALLOWED_MEDIA:
@@ -401,7 +408,7 @@ async def upload_media(pid: str, files: List[UploadFile] = File(...), zone_id: s
                                                                       "media_kind": media_kind, "client_visible": client_visible == "true", "uploaded_by": user["id"]})
         doc["url"] = signed_url(doc["id"])
         out.append(doc)
-    if client_visible == "true":
+    if client_visible == "true" and is_staff(user):
         client_ids = [c["id"] async for c in db.users.find({"customer_id": p["customer_id"]}, {"_id": 0, "id": 1})]
         await notify(client_ids, "Neue Fotos verfügbar", f"{len(out)} neue Aufnahmen in {p['number']}", f"/client/project/{pid}", "media")
     return out
@@ -410,7 +417,7 @@ async def upload_media(pid: str, files: List[UploadFile] = File(...), zone_id: s
 @router.get("/{pid}/before-after")
 async def list_before_after(pid: str, user=Depends(get_current_user)):
     await project_for_user(pid, user)
-    items = await find_list("before_after", {"project_id": pid, "deleted_at": None})
+    items = await find_list("before_after", {"project_id": pid, "deleted_at": None, **visible_filter(user)})
     for i in items:
         i["before_url"] = signed_url(i["before_id"]); i["after_url"] = signed_url(i["after_id"])
     return items
@@ -418,12 +425,41 @@ async def list_before_after(pid: str, user=Depends(get_current_user)):
 
 @router.post("/{pid}/before-after", status_code=201)
 async def create_before_after(pid: str, body: BeforeAfterBody, user=Depends(require_roles(*STAFF))):
-    await project_for_user(pid, user)
-    d = {"id": uid(), "project_id": pid, **body.model_dump(), "date": body.date or iso(), "created_by": user["id"], "created_at": iso(), "deleted_at": None}
+    p = await project_for_user(pid, user)
+    if user["role"] == "EMPLOYEE":
+        body.published = False  # publishing to the public portfolio is a management decision
+    for fid in (body.before_id, body.after_id):
+        f = await db.files.find_one({"id": fid, "project_id": pid, "deleted_at": None})
+        if not f:
+            raise HTTPException(422, "Bild gehört nicht zu diesem Projekt")
+    d = {"id": uid(), "project_id": pid, "project_number": p["number"], "category": p.get("category"), **body.model_dump(), "date": body.date or iso(), "created_by": user["id"], "created_at": iso(), "updated_at": iso(), "deleted_at": None}
     await db.before_after.insert_one(dict(d))
+    await log_activity(user, "BEFORE_AFTER_CREATED", "before_after", d["id"], new={"project_id": pid, "published": body.published})
+    if body.client_visible:
+        client_ids = [c["id"] async for c in db.users.find({"customer_id": p["customer_id"]}, {"_id": 0, "id": 1})]
+        await notify(client_ids, "Neue Fotos verfügbar", f"Vorher / Nachher: {body.title or 'neuer Vergleich'}", f"/client/project/{pid}", "media")
     d.pop("_id", None)
     d["before_url"] = signed_url(d["before_id"]); d["after_url"] = signed_url(d["after_id"])
     return d
+
+
+@router.patch("/{pid}/before-after/{bid}")
+async def update_before_after(pid: str, bid: str, body: dict, user=Depends(require_roles(*STAFF))):
+    await project_for_user(pid, user)
+    upd = {k: body[k] for k in ("title", "description", "zone_id", "date", "client_visible", "published") if k in body}
+    if user["role"] == "EMPLOYEE":
+        upd.pop("published", None)
+    upd["updated_at"] = iso()
+    await db.before_after.update_one({"id": bid}, {"$set": upd})
+    await log_activity(user, "BEFORE_AFTER_UPDATED", "before_after", bid, new=upd)
+    return await get_or_404("before_after", bid)
+
+
+@router.delete("/{pid}/before-after/{bid}")
+async def delete_before_after(pid: str, bid: str, user=Depends(require_roles(*STAFF))):
+    await project_for_user(pid, user)
+    await db.before_after.update_one({"id": bid}, {"$set": {"deleted_at": iso()}})
+    return {"ok": True}
 
 
 @router.patch("/{pid}/team")

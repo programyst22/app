@@ -65,6 +65,13 @@ async def cms_put(key: str, body: dict, user=Depends(require_roles(*ADMINS))):
 
 
 # ---------------- portfolio ----------------
+@router.get("/portfolio/before-after")
+async def portfolio_before_after():
+    items = await find_list("before_after", {"published": True, "deleted_at": None})
+    return [{"id": i["id"], "title": i.get("title"), "description": i.get("description"), "category": i.get("category"), "date": i.get("date"),
+             "before_url": signed_url(i["before_id"]), "after_url": signed_url(i["after_id"])} for i in items]
+
+
 @router.get("/portfolio")
 async def portfolio_public(all: bool = False, category: Optional[str] = None):
     q = {"deleted_at": None} if all else {"published": True, "deleted_at": None}

@@ -8,6 +8,7 @@ import { useAuth, isAdmin } from "@/src/auth";
 import { Eyebrow, H2, H3, Small, Caption, Badge, Card, Row, Button, Input, ScreenHeader, Loading, Empty, Stat, ChipRow, useToast } from "@/src/components/ui";
 import { Select, Toggle, Sheet, usePickers } from "@/src/components/forms";
 import { pdfUrl } from "@/src/components/project-sections";
+import { MediaPicker, ImageField } from "@/src/components/MediaPicker";
 import { makeStyles, useTheme, space, radius } from "@/src/theme";
 
 const TITLES: Record<string, string> = { customers: "Kunden", employees: "Mitarbeiter", tasks: "Aufgaben", calendar: "Kalender", messages: "Nachrichten", offers: "Angebote", invoices: "Rechnungen", portfolio: "Portfolio", cms: "CMS", media: "Medien", notifications: "Benachrichtigungen", analytics: "Analytics", activity: "Aktivitätsprotokoll", settings: "Einstellungen" };
@@ -157,7 +158,8 @@ function Portfolio() {
   const toast = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ title: "", category: "", description: "", location: "", cover_url: "", featured: false, published: false });
+  const [pick, setPick] = useState(false);
+  const [f, setF] = useState<any>({ title: "", category: "", description: "", location: "", cover_url: "", photo_urls: [], featured: false, published: false });
   const { data, isLoading } = useList("portfolio-all", "/portfolio?all=true");
   const { data: meta } = useList("meta", "/meta");
   const inv = () => { qc.invalidateQueries({ queryKey: ["portfolio-all"] }); qc.invalidateQueries({ queryKey: ["portfolio"] }); };
@@ -165,7 +167,21 @@ function Portfolio() {
   const patch = useMutation({ mutationFn: ({ id, body }: any) => api(`/portfolio/${id}`, { method: "PATCH", json: body }), onSuccess: inv, onError: (e: any) => toast.show(e.message, "error") });
   if (isLoading) return <Loading />;
   return (<>
-    <Button title="Eintrag anlegen" icon="add" onPress={() => setOpen(true)} testID="portfolio-new" />
+    <Button title={open ? "Formular schließen" : "Eintrag anlegen"} icon={open ? "close" : "add"} variant={open ? "light" : "primary"} onPress={() => setOpen(!open)} testID="portfolio-new" />
+    {open ? (
+      <Card style={{ gap: space.md }} testID="portfolio-form">
+        <Input label="Titel" value={f.title} onChangeText={(v) => setF({ ...f, title: v })} testID="pf-title" />
+        <Select label="Kategorie" value={f.category || null} options={(meta?.services || []).map((x: any) => x.title)} onChange={(v) => setF({ ...f, category: v })} testID="pf-category" />
+        <Input label="Beschreibung" value={f.description} onChangeText={(v) => setF({ ...f, description: v })} multiline testID="pf-desc" />
+        <Input label="Ort (optional)" value={f.location} onChangeText={(v) => setF({ ...f, location: v })} testID="pf-location" />
+        <ImageField label="Cover" value={f.cover_url} onChange={(v) => setF({ ...f, cover_url: v || "" })} testID="pf-cover" />
+        <Button title={`Fotos wählen (${f.photo_urls.length})`} small variant="light" icon="images-outline" onPress={() => setPick(true)} testID="pf-photos" />
+        <Toggle label="Veröffentlichen" value={f.published} onChange={(v) => setF({ ...f, published: v })} testID="pf-published" />
+        <Toggle label="Hervorgehoben" value={f.featured} onChange={(v) => setF({ ...f, featured: v })} testID="pf-featured" />
+        <Caption>Nur freigegebene Medien aus der Bibliothek – private Kundendaten werden nie automatisch veröffentlicht.</Caption>
+        <Button title="Speichern" onPress={() => create.mutate()} loading={create.isPending} disabled={!f.title || !f.category} testID="pf-submit" />
+      </Card>
+    ) : null}
     {(data || []).map((p: any) => (
       <Card key={p.id} style={{ gap: space.sm }} testID={`pf-${p.id}`}>
         <View style={{ flexDirection: "row", gap: space.md }}>
@@ -176,16 +192,7 @@ function Portfolio() {
         <Toggle label="Hervorgehoben" value={!!p.featured} onChange={(v) => patch.mutate({ id: p.id, body: { featured: v } })} testID={`pf-feat-${p.id}`} />
       </Card>
     ))}
-    <Sheet open={open} onClose={() => setOpen(false)} title="Portfolio-Eintrag" testID="sheet-portfolio">
-      <Input label="Titel" value={f.title} onChangeText={(v) => setF({ ...f, title: v })} testID="pf-title" />
-      <Select label="Kategorie" value={f.category || null} options={(meta?.services || []).map((x: any) => x.title)} onChange={(v) => setF({ ...f, category: v })} testID="pf-category" />
-      <Input label="Beschreibung" value={f.description} onChangeText={(v) => setF({ ...f, description: v })} multiline testID="pf-desc" />
-      <Input label="Ort (optional)" value={f.location} onChangeText={(v) => setF({ ...f, location: v })} testID="pf-location" />
-      <Input label="Cover-URL (aus Medienbibliothek)" value={f.cover_url} onChangeText={(v) => setF({ ...f, cover_url: v })} autoCapitalize="none" testID="pf-cover" />
-      <Toggle label="Veröffentlichen" value={f.published} onChange={(v) => setF({ ...f, published: v })} testID="pf-published" />
-      <Caption>Hinweis: Private Kundendaten werden nie automatisch veröffentlicht – nur freigegebene Medien.</Caption>
-      <Button title="Speichern" onPress={() => create.mutate()} loading={create.isPending} disabled={!f.title || !f.category} testID="pf-submit" />
-    </Sheet>
+    <MediaPicker open={pick} onClose={() => setPick(false)} multiple title="Projektfotos (Bibliothek)" onPick={(items) => setF({ ...f, photo_urls: items.map((i) => i.url.split("?")[0]), cover_url: f.cover_url || items[0]?.url.split("?")[0] || "" })} />
   </>);
 }
 
@@ -193,19 +200,29 @@ function Cms() {
   const toast = useToast();
   const qc = useQueryClient();
   const { data, isLoading } = useList("cms", "/cms");
-  const [edit, setEdit] = useState<{ key: string; text: string } | null>(null);
-  const save = useMutation({ mutationFn: ({ key, text }: any) => api(`/cms/${key}`, { method: "PUT", json: JSON.parse(text) }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cms"] }); setEdit(null); toast.show("Inhalt gespeichert", "success"); }, onError: (e: any) => toast.show(e.message.includes("JSON") ? "Ungültiges Format" : e.message, "error") });
+  const [key, setKey] = useState("brand");
+  const [draft, setDraft] = useState<any>(null);
+  const save = useMutation({ mutationFn: (body: any) => api(`/cms/${key}`, { method: "PUT", json: body }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cms"] }); setDraft(null); toast.show("Inhalt gespeichert – sofort live", "success"); }, onError: (e: any) => toast.show(e.message, "error") });
   if (isLoading) return <Loading />;
-  const labels: Record<string, string> = { hero: "Hero", services: "Leistungen", about: "Über OKA Bau / Werte", katharina: "Katharina Kling", process: "Ablauf", faq: "FAQ", contact: "Kontakt & Rechtliches", announcements: "Ankündigungen" };
+  const labels: Record<string, string> = { brand: "Logo & Marke", hero: "Hero", services: "Leistungen", about: "Über OKA Bau / Werte", katharina: "Katharina Kling", process: "Ablauf", faq: "FAQ", contact: "Kontakt & Rechtliches", announcements: "Ankündigungen" };
+  const cur = draft ?? data?.[key] ?? {};
+  const set = (k: string, v: any) => setDraft({ ...cur, [k]: v });
+  const IMAGE_FIELDS: Record<string, [string, string][]> = { brand: [["logo", "Logo (hell, für dunkle Flächen)"], ["logo_dark", "Logo (dunkel)"]], hero: [["image", "Hero-Bild (Hintergrund / 2D-Fallback)"]], about: [["image", "Bild Über uns"]], katharina: [["image", "Portrait Katharina Kling"]], contact: [["image", "Bild Kontakt"]] };
+  const TEXT_FIELDS: Record<string, [string, string][]> = { hero: [["eyebrow", "Eyebrow"], ["subtitle", "Untertitel"], ["cta", "CTA"], ["cta_secondary", "Zweiter CTA"]], about: [["eyebrow", "Eyebrow"], ["headline", "Headline"], ["text", "Text"]], katharina: [["name", "Name"], ["title", "Titel"], ["quote", "Zitat"]], contact: [["headline", "Headline"], ["phone", "Telefon"], ["email", "E-Mail"], ["address", "Adresse"]], services: [["eyebrow", "Eyebrow"], ["headline", "Headline"]], faq: [["eyebrow", "Eyebrow"], ["headline", "Headline"]], process: [["eyebrow", "Eyebrow"], ["headline", "Headline"]] };
   return (<>
-    <Caption>Inhalte der App/Website ohne Code bearbeiten. Änderungen sind sofort live.</Caption>
-    {Object.keys(labels).map((k) => <Row key={k} icon="create-outline" title={labels[k]} subtitle={k} onPress={() => setEdit({ key: k, text: JSON.stringify(data?.[k] ?? {}, null, 2) })} testID={`cms-${k}`} />)}
-    <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? labels[edit.key] : ""} testID="sheet-cms">
-      {edit ? (<>
-        <Input value={edit.text} onChangeText={(v) => setEdit({ ...edit, text: v })} multiline style={{ minHeight: 320, fontFamily: "monospace", fontSize: 13 }} autoCapitalize="none" testID="cms-editor" />
-        <Button title="Speichern" onPress={() => save.mutate(edit)} loading={save.isPending} testID="cms-save" />
-      </>) : null}
-    </Sheet>
+    <Caption>Inhalte der App/Website ohne Code bearbeiten. Bilder kommen aus der Medienbibliothek (echte OKA-Bau-Assets).</Caption>
+    <View style={{ marginHorizontal: -space.xl }}><ChipRow items={Object.keys(labels)} value={key} onChange={(k) => { setKey(k); setDraft(null); }} labels={labels} testID="cms-key" /></View>
+    {(IMAGE_FIELDS[key] || []).map(([f, l]) => <ImageField key={f} label={l} value={cur[f]} onChange={(v) => set(f, v)} testID={`cms-img-${f}`} />)}
+    {(TEXT_FIELDS[key] || []).map(([f, l]) => <Input key={f} label={l} value={String(cur[f] ?? "")} onChangeText={(v) => set(f, v)} multiline={f === "text" || f === "quote"} testID={`cms-${f}`} />)}
+    {key === "services" ? (cur.items || []).map((it: any, i: number) => (
+      <Card key={it.key} style={{ gap: space.sm }}>
+        <Small style={{ fontWeight: "600" }}>{it.title}</Small>
+        <Input label="Kurztext" value={it.short} onChangeText={(v) => set("items", cur.items.map((x: any, j: number) => (j === i ? { ...x, short: v } : x)))} testID={`cms-service-${it.key}`} />
+        <ImageField label="Bild" value={it.image} onChange={(v) => set("items", cur.items.map((x: any, j: number) => (j === i ? { ...x, image: v } : x)))} testID={`cms-service-img-${it.key}`} />
+      </Card>
+    )) : null}
+    {["faq", "process", "about", "announcements"].includes(key) ? <Input label="Erweitert (JSON)" value={JSON.stringify(cur, null, 2)} onChangeText={(v) => { try { setDraft(JSON.parse(v)); } catch { /* ignore until valid */ } }} multiline style={{ minHeight: 220, fontSize: 12 }} autoCapitalize="none" testID="cms-editor" /> : null}
+    <Button title="Speichern" onPress={() => save.mutate(cur)} loading={save.isPending} disabled={!draft} testID="cms-save" />
   </>);
 }
 
@@ -248,11 +265,17 @@ function Media() {
 
 function Notifs() {
   const qc = useQueryClient();
+  const { colors } = useTheme();
   const { data, isLoading } = useList("notifications", "/notifications");
   const { data: outbox } = useList("outbox", "/email-outbox");
   const read = useMutation({ mutationFn: () => api("/notifications/read", { method: "POST", json: {} }), onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }) });
   if (isLoading) return <Loading />;
   return (<>
+    <Card style={{ gap: space.sm, borderColor: colors.warning }} testID="push-action-required">
+      <Badge status="WAITING" label="ACTION REQUIRED" />
+      <H3>Firebase google-services.json</H3>
+      <Small>Die komplette Expo-Push-Infrastruktur ist implementiert (Neue Nachricht, Termin, Termin-Erinnerung, Fortschritt, Fotos, Dokument, Angebot, Angebotsstatus, Rechnung, Projektabschluss). Damit Pushs auf Geräten ankommen, bitte die Datei google-services.json aus der Firebase-Konsole (Paket com.emergent.okabuildplatform.hpgnts) bereitstellen und anschließend über „Publish“ einen nativen Build erzeugen. Bis dahin laufen alle Ereignisse als In-App-Benachrichtigung und E-Mail-Postausgang weiter.</Small>
+    </Card>
     <Button title="Alle als gelesen markieren" small variant="light" onPress={() => read.mutate()} testID="notifs-read-all" />
     {(data || []).map((n: any) => <Row key={n.id} icon={n.read ? "notifications-outline" : "notifications"} title={n.title} subtitle={`${n.message} · ${fmtDate(n.created_at, true)}`} testID={`notif-${n.id}`} />)}
     <Eyebrow style={{ paddingTop: space.lg }}>E-Mail-Postausgang (Abstraktion)</Eyebrow>

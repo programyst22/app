@@ -5,6 +5,7 @@ from core import db, iso, uid, hash_password, DEFAULT_STAGES, SERVICES
 WORK = "https://oka-bau.eu/assets/work/"
 
 CMS_DEFAULTS = {
+    "brand": {"logo": None, "logo_dark": None, "name": "OKA Bau GmbH & Co. KG"},
     "hero": {"eyebrow": "AUGSBURG · INNENAUSBAU · OBJEKTSERVICE", "headline": ["Räume.", "Immobilien.", "Lösungen."],
              "subtitle": "Innenausbau, Renovierung und Objektservice in Augsburg – zuverlässig aus einer Hand.",
              "cta": "Projekt starten", "cta_secondary": "Leistungen ansehen"},
@@ -61,14 +62,16 @@ async def seed():
     await db.messages.create_index([("project_id", 1), ("created_at", 1)])
     await db.notifications.create_index([("user_id", 1), ("created_at", -1)])
 
-    admin_email = os.environ["ADMIN_EMAIL"].lower()
-    if not await db.users.find_one({"email": admin_email}):
-        await db.users.insert_one({"id": uid(), "email": admin_email, "password_hash": hash_password(os.environ["ADMIN_PASSWORD"]), "first_name": "Katharina", "last_name": "Kling",
-                                   "role": "SUPER_ADMIN", "disabled": False, "email_verified": True, "created_at": iso()})
-    for email, pw, fn, ln, role in [("mitarbeiter@okabau.de", "OkaBau!Team2026", "Max", "Mustermann", "EMPLOYEE"), ("kunde@example.com", "OkaBau!Kunde2026", "Test", "Kunde", "CLIENT")]:
-        if not await db.users.find_one({"email": email}):
-            await db.users.insert_one({"id": uid(), "email": email, "password_hash": hash_password(pw), "first_name": fn, "last_name": ln, "role": role, "disabled": False,
-                                       "email_verified": True, "can_publish_client_updates": True, "created_at": iso()})
+    # ---- LOCAL DEVELOPMENT DEMO SEED ONLY ----
+    # Runs exclusively when SEED_DEMO_DATA=true. Never enable in production.
+    # Production creates its first SUPER_ADMIN via POST /api/auth/setup (see README).
+    if os.environ.get("SEED_DEMO_DATA", "false").lower() == "true":
+        demo_pw = os.environ.get("DEMO_PASSWORD")
+        if demo_pw:
+            for email, fn, ln, role in [("admin@okabau.de", "Demo", "Admin", "SUPER_ADMIN"), ("mitarbeiter@okabau.de", "Demo", "Mitarbeiter", "EMPLOYEE"), ("kunde@example.com", "Demo", "Kunde", "CLIENT")]:
+                if not await db.users.find_one({"email": email}):
+                    await db.users.insert_one({"id": uid(), "email": email, "password_hash": hash_password(demo_pw), "first_name": fn, "last_name": ln, "role": role, "disabled": False,
+                                               "email_verified": True, "can_publish_client_updates": True, "demo": True, "created_at": iso()})
     for key, content in CMS_DEFAULTS.items():
         if not await db.cms.find_one({"key": key}):
             await db.cms.insert_one({"key": key, "content": content, "updated_at": iso()})

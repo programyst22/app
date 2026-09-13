@@ -4,7 +4,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
-import { api } from "@/src/api";
+import { api, abs } from "@/src/api";
+import { Image } from "expo-image";
 import { Eyebrow, H1, H3, Small, Button, Card, Caption } from "@/src/components/ui";
 import { makeStyles, useTheme, space } from "@/src/theme";
 
@@ -43,6 +44,7 @@ export default function Leistungen() {
           {items.map((it, i) => (
             <View key={it.key} onLayout={(e) => (offsets.current[it.key] = e.nativeEvent.layout.y)}>
               <Card index={i} style={{ gap: space.md, borderColor: focus === it.key ? colors.brandPrimary : colors.border }} testID={`leistung-${it.key}`}>
+                {it.image ? <Image source={{ uri: abs(it.image) }} style={{ width: "100%", height: 180, borderRadius: 12 }} contentFit="cover" transition={300} /> : null}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
                   <View style={s.iconWrap}><Ionicons name={ICONS[it.key] || "cube-outline"} size={22} color={colors.onBrandTertiary} /></View>
                   <View style={{ flex: 1 }}>

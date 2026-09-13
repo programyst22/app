@@ -1,4 +1,4 @@
-import secrets
+import os, secrets
 from datetime import timedelta
 from typing import Optional
 import httpx
@@ -55,6 +55,44 @@ class UpdateProfile(BaseModel):
 
 def _token_response(user: dict):
     return {"access_token": make_access_token(user), "token_type": "bearer", "user": public_user(user)}
+
+
+class SetupBody(BaseModel):
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    setup_token: Optional[str] = None
+
+
+@router.get("/setup/status")
+async def setup_status():
+    has_admin = await db.users.find_one({"role": "SUPER_ADMIN", "disabled": False}) is not None
+    return {"needs_setup": not has_admin, "token_required": bool(os.environ.get("SETUP_TOKEN"))}
+
+
+@router.post("/setup", status_code=201)
+async def setup_first_admin(body: SetupBody):
+    """One-time secure bootstrap: creates the first SUPER_ADMIN. Disabled as soon as one exists.
+    Optionally protected by SETUP_TOKEN env var (recommended in production)."""
+    if await db.users.find_one({"role": "SUPER_ADMIN", "disabled": False}):
+        raise HTTPException(409, "Einrichtung bereits abgeschlossen")
+    required = os.environ.get("SETUP_TOKEN")
+    if required and body.setup_token != required:
+        raise HTTPException(403, "Setup-Token ungültig")
+    if len(body.password) < 12:
+        raise HTTPException(422, "Passwort muss mindestens 12 Zeichen haben")
+    email = body.email.lower()
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
+    if existing:
+        await db.users.update_one({"id": existing["id"]}, {"$set": {"role": "SUPER_ADMIN", "password_hash": hash_password(body.password), "disabled": False, "email_verified": True}})
+        user = await db.users.find_one({"id": existing["id"]}, {"_id": 0})
+    else:
+        user = {"id": uid(), "email": email, "password_hash": hash_password(body.password), "first_name": body.first_name.strip(), "last_name": body.last_name.strip(),
+                "role": "SUPER_ADMIN", "disabled": False, "email_verified": True, "created_at": iso()}
+        await db.users.insert_one(dict(user))
+    await log_activity(user, "SETUP_SUPER_ADMIN", "user", user["id"])
+    return _token_response(user)
 
 
 @router.post("/register", status_code=201)

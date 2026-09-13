@@ -6,7 +6,8 @@ import { api, upload, fmtDate } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { Eyebrow, H2, H3, Small, Caption, Badge, Card, Row, Progress, ChipRow, ScreenHeader, Loading, Button, Input, Empty, useToast } from "@/src/components/ui";
 import { Select, Toggle, Sheet, usePickers } from "@/src/components/forms";
-import { Updates, MediaGrid } from "@/src/components/project-sections";
+import { Updates, MediaGrid, BeforeAfter } from "@/src/components/project-sections";
+import { BeforeAfterEditor } from "@/src/components/BeforeAfterEditor";
 import { makeStyles, space } from "@/src/theme";
 
 const TABS = ["Übersicht", "Updates", "Fotos", "Aufgaben", "Bautagebuch"];
@@ -21,7 +22,7 @@ export default function EmployeeProject() {
   const { pickImages } = usePickers();
   const { id, tab: t0 } = useLocalSearchParams<{ id: string; tab?: string }>();
   const [tab, setTab] = useState(t0 && TABS.includes(t0) ? t0 : "Übersicht");
-  const [sheet, setSheet] = useState<null | "update" | "diary" | "progress">(null);
+  const [sheet, setSheet] = useState<null | "update" | "diary" | "progress" | "ba">(null);
   const [upd, setUpd] = useState({ title: "", description: "", progress: "", client_visible: true });
   const [diary, setDiary] = useState({ date: new Date().toISOString().slice(0, 10), work_completed: "", materials: "", problems: "", notes: "", weather: "", client_visible: false });
   const [progress, setProgress] = useState("");
@@ -70,7 +71,7 @@ export default function EmployeeProject() {
             </>
           ) : null}
           {tab === "Updates" ? (<><Button title="Neues Update" icon="add" onPress={() => setSheet("update")} testID="emp-add-update-2" /><Updates projectId={id} /></>) : null}
-          {tab === "Fotos" ? (<><Button title="Fotos / Videos hochladen" icon="camera-outline" onPress={uploadPhotos} loading={uploading} testID="emp-upload-photos-2" /><MediaGrid projectId={id} /></>) : null}
+          {tab === "Fotos" ? (<><View style={{ flexDirection: "row", gap: space.sm, flexWrap: "wrap" }}><Button title="Fotos / Videos hochladen" small icon="camera-outline" onPress={uploadPhotos} loading={uploading} testID="emp-upload-photos-2" /><Button title="Vorher / Nachher" small variant="light" icon="git-compare-outline" onPress={() => setSheet("ba")} testID="emp-add-before-after" /></View><MediaGrid projectId={id} /><Eyebrow style={{ paddingTop: space.md }}>Vorher / Nachher</Eyebrow><BeforeAfter projectId={id} editable /></>) : null}
           {tab === "Aufgaben" ? (!tasks?.length ? <Empty icon="checkbox-outline" title="Keine Aufgaben" /> : tasks.map((t: any) => (
             <Card key={t.id} style={{ gap: space.sm }} testID={`task-${t.id}`}>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Caption>{t.priority} · fällig {fmtDate(t.due_date)}</Caption><Badge status={t.status} label={t.status} /></View>
@@ -97,6 +98,7 @@ export default function EmployeeProject() {
         </ScrollView>
       )}
 
+      <BeforeAfterEditor projectId={id} open={sheet === "ba"} onClose={() => setSheet(null)} />
       <Sheet open={sheet === "update"} onClose={() => setSheet(null)} title="Projektupdate" testID="sheet-update">
         <Input label="Titel" value={upd.title} onChangeText={(v) => setUpd({ ...upd, title: v })} testID="upd-title" />
         <Input label="Beschreibung" value={upd.description} onChangeText={(v) => setUpd({ ...upd, description: v })} multiline testID="upd-desc" />

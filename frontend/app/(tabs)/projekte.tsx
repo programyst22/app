@@ -4,7 +4,8 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
+import { api, abs } from "@/src/api";
+import { BASlider, useSectionStyles } from "@/src/components/project-sections";
 import { Eyebrow, H1, H3, Small, Caption, ChipRow, Empty, Loading } from "@/src/components/ui";
 import { makeStyles, space, radius } from "@/src/theme";
 
@@ -17,6 +18,8 @@ export default function Projekte() {
   const { width } = useWindowDimensions();
   const [cat, setCat] = useState("Alle");
   const { data, isLoading } = useQuery({ queryKey: ["portfolio"], queryFn: () => api("/portfolio") });
+  const { data: ba } = useQuery({ queryKey: ["public-before-after"], queryFn: () => api("/portfolio/before-after") });
+  const bs = useSectionStyles();
   const cats = ["Alle", ...Array.from(new Set<string>((data || []).map((p: any) => p.category as string)))];
   const list = (data || []).filter((p: any) => cat === "Alle" || p.category === cat);
   const colW = (width - space.xl * 2 - space.md) / 2;
@@ -35,7 +38,7 @@ export default function Projekte() {
             const big = i % 3 === 0;
             return (
               <Pressable key={p.id} testID={`portfolio-item-${i}`} onPress={() => router.push(`/portfolio/${p.id}`)} style={[s.tile, { width: big ? colW * 2 + space.md : colW }]}>
-                <Image source={{ uri: p.cover }} style={{ width: "100%", height: big ? 260 : 200 }} contentFit="cover" transition={400} />
+                <Image source={{ uri: abs(p.cover) }} style={{ width: "100%", height: big ? 260 : 200 }} contentFit="cover" transition={400} />
                 <View style={{ padding: space.md, gap: 2 }}>
                   <Caption onDark>{p.category}</Caption>
                   <H3 onDark numberOfLines={2} style={{ fontSize: big ? 20 : 16 }}>{p.title}</H3>
@@ -43,6 +46,13 @@ export default function Projekte() {
               </Pressable>
             );
           })}
+          {cat === "Alle" && ba?.length ? (
+            <View style={{ width: "100%", gap: space.lg, paddingTop: space.xl }} testID="public-before-after">
+              <Eyebrow>Vorher / Nachher</Eyebrow>
+              <H3>Verwandlung sichtbar gemacht.</H3>
+              {ba.map((b: any) => <BASlider key={b.id} item={b} width={width - space.xl * 2} styles={bs} />)}
+            </View>
+          ) : null}
         </ScrollView>
       )}
     </View>

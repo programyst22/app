@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { api } from "@/src/api";
+import { api, abs } from "@/src/api";
 import { HeroScene, ServiceHouse } from "@/src/three/Experiences";
 import { Eyebrow, Display, H2, H3, Body, Small, Caption, Button, Card, Section, Row } from "@/src/components/ui";
 import { makeStyles, useTheme, space, radius } from "@/src/theme";
@@ -40,13 +40,13 @@ export default function Home() {
   return (
     <View style={s.screen}>
       <View style={[s.topBar, { top: insets.top + space.md }]} pointerEvents="box-none">
-        <Small style={s.logo}>OKA BAU</Small>
+        {cms?.brand?.logo ? <Image source={{ uri: abs(cms.brand.logo) }} style={{ width: 120, height: 36 }} contentFit="contain" testID="brand-logo" /> : <Small style={s.logo}>OKA BAU</Small>}
         <Pressable testID="home-login-button" onPress={() => router.push("/(tabs)/mein-projekt")} style={{ height: 40, paddingHorizontal: space.lg, borderRadius: radius.pill, backgroundColor: colors.glassDark, justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)" }}>
           <Caption style={{ color: colors.onSurfaceInverse, fontWeight: "600" }}>Kundenportal</Caption>
         </Pressable>
       </View>
       <ScrollView scrollEventThrottle={32} onScroll={(e) => setScroll(Math.min(1, e.nativeEvent.contentOffset.y / heroH))} contentContainerStyle={{ paddingBottom: space.xxxl }} testID="home-scroll">
-        <HeroScene height={heroH} scroll={scroll}>
+        <HeroScene height={heroH} scroll={scroll} fallbackImage={abs(hero?.image)}>
           <Eyebrow onDark>{hero?.eyebrow || "AUGSBURG · INNENAUSBAU · OBJEKTSERVICE"}</Eyebrow>
           <View>
             {(hero?.headline || ["Räume.", "Immobilien.", "Lösungen."]).map((l: string, i: number) => (
@@ -86,7 +86,7 @@ export default function Home() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.md }} style={{ marginHorizontal: -space.xl, paddingHorizontal: space.xl }}>
             {(portfolio || []).filter((p: any) => p.featured).concat((portfolio || []).filter((p: any) => !p.featured)).slice(0, 6).map((p: any, i: number) => (
               <Pressable key={p.id} testID={`portfolio-card-${i}`} onPress={() => router.push(`/portfolio/${p.id}`)} style={s.projCard}>
-                <Image source={{ uri: p.cover }} style={{ width: 260, height: 300 }} contentFit="cover" transition={400} />
+                <Image source={{ uri: abs(p.cover) }} style={{ width: 260, height: 300 }} contentFit="cover" transition={400} />
                 <View style={{ padding: space.lg, gap: 4 }}>
                   <Caption onDark>{p.category}</Caption>
                   <H3 onDark numberOfLines={2}>{p.title}</H3>
@@ -100,13 +100,14 @@ export default function Home() {
         <Section eyebrow="Aus der Praxis" title="Handwerk, das sichtbar wird.">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }} style={{ marginHorizontal: -space.xl, paddingHorizontal: space.xl }}>
             {(portfolio || []).flatMap((p: any) => p.photos || []).slice(0, 12).map((u: string, i: number) => (
-              <Image key={i} source={{ uri: u }} style={s.mediaTile} contentFit="cover" transition={300} />
+              <Image key={i} source={{ uri: abs(u) }} style={s.mediaTile} contentFit="cover" transition={300} />
             ))}
             <View style={{ width: space.xl }} />
           </ScrollView>
         </Section>
 
         <Section eyebrow={about?.eyebrow || "Über OKA Bau"} title={about?.headline}>
+          {about?.image ? <Image source={{ uri: abs(about.image) }} style={{ width: "100%", height: 260, borderRadius: radius.lg }} contentFit="cover" transition={400} testID="about-image" /> : null}
           <Body>{about?.text}</Body>
           <View style={{ gap: space.sm }}>
             {(about?.values || []).map((v: any, i: number) => (
@@ -121,7 +122,7 @@ export default function Home() {
         {kk ? (
           <Section>
             <Card dark style={{ padding: 0, overflow: "hidden" }} testID="katharina-card">
-              <Image source={{ uri: kk.image }} style={{ width: "100%", height: 320 }} contentFit="cover" transition={500} />
+              <Image source={{ uri: abs(kk.image) }} style={{ width: "100%", height: 320 }} contentFit="cover" transition={500} />
               <View style={{ padding: space.xl, gap: space.md }}>
                 <Small style={s.quote}>{kk.quote}</Small>
                 <View>

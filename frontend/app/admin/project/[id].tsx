@@ -7,6 +7,7 @@ import { ProjectTwin, ZoneDetail, Zone } from "@/src/three/Experiences";
 import { Eyebrow, H2, H3, Small, Caption, Badge, Card, Row, Progress, ChipRow, ScreenHeader, Loading, Button, Input, Empty, useToast, STATUS_LABEL } from "@/src/components/ui";
 import { Select, Toggle, Sheet, usePickers } from "@/src/components/forms";
 import { Timeline, Updates, MediaGrid, BeforeAfter, Appointments, Documents, Team, pdfUrl } from "@/src/components/project-sections";
+import { BeforeAfterEditor } from "@/src/components/BeforeAfterEditor";
 import { makeStyles, space } from "@/src/theme";
 
 const TABS = ["Übersicht", "Fortschritt", "3D", "Timeline", "Bautagebuch", "Aufgaben", "Fotos", "Dokumente", "Angebote", "Rechnungen", "Termine", "Nachrichten", "Team", "Einstellungen"];
@@ -155,7 +156,7 @@ export default function AdminProject() {
             ))}
           </>) : null}
 
-          {tab === "Fotos" ? (<><Button title="Fotos / Videos hochladen" icon="camera-outline" onPress={() => uploadPhotos()} loading={busy} testID="admin-upload-photos" /><MediaGrid projectId={id} /><Eyebrow style={{ paddingTop: space.md }}>Vorher / Nachher</Eyebrow><BeforeAfter projectId={id} /></>) : null}
+          {tab === "Fotos" ? (<><View style={{ flexDirection: "row", gap: space.sm, flexWrap: "wrap" }}><Button title="Fotos / Videos hochladen" small icon="camera-outline" onPress={() => uploadPhotos()} loading={busy} testID="admin-upload-photos" /><Button title="Vorher / Nachher erstellen" small variant="light" icon="git-compare-outline" onPress={() => setSheet("ba")} testID="admin-add-before-after" /></View><MediaGrid projectId={id} /><Eyebrow style={{ paddingTop: space.md }}>Vorher / Nachher</Eyebrow><BeforeAfter projectId={id} editable /></>) : null}
           {tab === "Dokumente" ? (<><Button title="Dokument hochladen" icon="document-attach-outline" onPress={() => setSheet("doc")} testID="admin-upload-doc" /><Documents projectId={id} /></>) : null}
 
           {tab === "Angebote" ? (<>
@@ -205,6 +206,7 @@ export default function AdminProject() {
         </ScrollView>
       )}
 
+      <BeforeAfterEditor projectId={id} open={sheet === "ba"} onClose={() => setSheet(null)} />
       <Sheet open={sheet === "zone"} onClose={() => setSheet(null)} title={zf.id ? "Bereich bearbeiten" : "Neuer Bereich"} testID="sheet-zone">
         <Input label="Anzeigename (z. B. Badezimmer)" value={zf.display_name} onChangeText={(v) => setZf({ ...zf, display_name: v })} testID="zone-name" />
         <Input label="3D-Objektname (Mesh-Name im GLB oder bathroom/walls/…)" value={zf.object_name} onChangeText={(v) => setZf({ ...zf, object_name: v })} autoCapitalize="none" testID="zone-object" />

@@ -39,11 +39,11 @@ class NoteBody(BaseModel):
 ALLOWED_MEDIA = {"image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "application/pdf"}
 
 
-async def store_upload(f: UploadFile, owner_id: str, folder: str, extra: dict) -> dict:
+async def store_upload(f: UploadFile, owner_id: str, folder: str, extra: dict, content_type: str = "") -> dict:
     data = await f.read()
     if len(data) > 60 * 1024 * 1024:
         raise HTTPException(413, "Datei zu groß (max. 60 MB)")
-    ctype = f.content_type or "application/octet-stream"
+    ctype = content_type or f.content_type or "application/octet-stream"
     ext = (f.filename or "file").rsplit(".", 1)[-1].lower() if "." in (f.filename or "") else "bin"
     fid = uid()
     path = f"{APP_NAME}/uploads/{folder}/{owner_id}/{fid}.{ext}"

@@ -25,6 +25,14 @@ Komplettes, produktionsreifes System für OKA Bau GmbH & Co. KG (Augsburg): nati
 - Admin: Dashboard, Kanban (Long-Press-Drag + Verschieben), Lead-Detail + Umwandlung, Projekte, Projektseite mit 14 Tabs inkl. 3D-Editor (GLB-Upload, Zonen, Kamera/Licht), Angebote/Rechnungen/PDF, Termine, Team, Einstellungen; Mehr: Kunden, Mitarbeiter, Aufgaben, Kalender, Nachrichten, Angebote, Rechnungen, Portfolio, CMS, Medien, Benachrichtigungen, Analytics, Aktivitätsprotokoll, Einstellungen
 - Tests: 45 Backend-Tests (pytest, `/app/backend/tests`) + Frontend-Smoke bestanden
 
+## Umgesetzt (Iteration 2)
+- Medienbibliothek als Asset-Quelle: MediaPicker/ImageField, CMS-Bildfelder (Logo, Hero, Über uns, Katharina, Leistungen), Portfolio-Cover/-Fotos aus Bibliothek, öffentliche Bibliotheksdateien, private Projektdateien
+- Realtime-Chat: WebSocket `/api/ws/projects/{pid}` (Presence, Nachricht, Typing, Lesebestätigung, Ping), Reconnect mit Backoff, Polling nur als Offline-Fallback, Bild- und Dokumentanhänge (auch für Kunden), Projekt-Berechtigungen
+- Vorher/Nachher-Editor (Admin + Mitarbeiter), Titel/Raum/Datum/Sichtbarkeit/Veröffentlichung, öffentlicher Portfolio-Abschnitt, Kunden-Slider
+- Push: alle 10 Ereignisse inkl. Termin-Erinnerung (Hintergrundjob) und Projektabschluss; ACTION REQUIRED Banner (google-services.json)
+- Sicherheit: keine Standardpasswörter, Demo-Seed nur mit SEED_DEMO_DATA, Ersteinrichtung `/setup` + `POST /api/auth/setup` (einmalig, optional SETUP_TOKEN), Passwörter rotiert
+- Tests: 60/60 Backend, Frontend-Flows verifiziert
+
 ## Backlog (priorisiert)
 - P0: `google-services.json` vom Nutzer → Push aktivieren (Build nötig); echte OKA-Bau-Assets/Logo einbinden
 - P1: GLB-Laden auf nativen Geräten (Dev-Build + Loader-Polyfills); WebSocket statt Polling im Chat; E-Mail-Provider (Resend) an Outbox anschließen; Kalender-Monatsraster; Datepicker statt Textfelder

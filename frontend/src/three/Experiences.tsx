@@ -28,14 +28,14 @@ const useStyles = makeStyles((c) => ({
 const FALLBACK_HERO = "https://oka-bau.eu/assets/work/treppenhaus.webp";
 
 /** Cinematic architectural hero. Falls back to a real OKA Bau photograph when WebGL is unavailable. */
-export function HeroScene({ height, scroll = 0, children }: { height: number; scroll?: number; children?: React.ReactNode }) {
+export function HeroScene({ height, scroll = 0, children, fallbackImage }: { height: number; scroll?: number; children?: React.ReactNode; fallbackImage?: string | null }) {
   const s = useStyles();
   const { quality, reducedMotion } = useQuality();
   const { colors } = useTheme();
   return (
     <View style={[s.hero, { height }]} testID="hero-3d">
       {quality === "FALLBACK" ? (
-        <Image source={{ uri: FALLBACK_HERO }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={600} />
+        <Image source={{ uri: fallbackImage || FALLBACK_HERO }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={600} />
       ) : (
         <SceneCanvas dpr={DPR[quality]} shadows={quality !== "LOW"} background={colors.nearBlack} style={{ height }}>
           <color attach="background" args={["#0E0E0E"]} />

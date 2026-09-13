@@ -30,6 +30,7 @@ function AuthScreen() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [f, setF] = useState({ email: "", password: "", first_name: "", last_name: "", phone: "" });
   const [busy, setBusy] = useState(false);
+  const { data: setup } = useQuery({ queryKey: ["setup-status"], queryFn: () => api("/auth/setup/status") });
   const submit = async () => {
     setBusy(true);
     try {
@@ -45,6 +46,7 @@ function AuthScreen() {
     <View style={s.screen}>
       <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={{ paddingTop: insets.top + space.xl, paddingHorizontal: space.xl, paddingBottom: space.xxxl, gap: space.lg }}>
         <Eyebrow>Kundenportal</Eyebrow>
+        {setup?.needs_setup ? <Card dark style={{ gap: space.sm }} testID="setup-hint"><Small onDark>Noch kein Administrator eingerichtet.</Small><Button title="Ersteinrichtung starten" variant="accent" small onPress={() => router.push("/setup")} testID="setup-start" /></Card> : null}
         <H1>{mode === "login" ? "Willkommen zurück." : "Konto erstellen."}</H1>
         <Small>Verfolgen Sie Ihr Projekt in 3D, chatten Sie mit Ihrem Projektteam und verwalten Sie Dokumente, Angebote und Rechnungen.</Small>
         {mode === "register" ? (

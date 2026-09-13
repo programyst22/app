@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, Pressable } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api, fmtDate } from "@/src/api";
@@ -18,7 +18,7 @@ export default function EmployeeHome() {
   if (!isStaff(user)) return <Redirect href="/(tabs)/mein-projekt" />;
   return (
     <View style={s.screen}>
-      <ScreenHeader title="Mitarbeiterportal" subtitle={`${user.first_name} ${user.last_name}`} />
+      <ScreenHeader title="Mitarbeiterportal" subtitle={`${user!.first_name} ${user!.last_name}`} />
       {isLoading || !data ? <Loading /> : (
         <ScrollView contentContainerStyle={{ padding: space.xl, gap: space.lg, paddingBottom: space.xxxl }} testID="employee-dashboard">
           <View style={{ flexDirection: "row", gap: space.md, flexWrap: "wrap" }}>
@@ -44,7 +44,7 @@ export default function EmployeeHome() {
           {!data.today_appointments.length ? <Small>Keine Termine heute.</Small> : data.today_appointments.map((a: any) => <Row key={a.id} icon="calendar-outline" title={`${a.type} · ${a.title}`} subtitle={`${fmtDate(a.start, true)}${a.location ? ` · ${a.location}` : ""}`} />)}
           <Eyebrow>Meine letzten Projektupdates</Eyebrow>
           {!data.recent_updates.length ? <Small>Noch keine Updates verfasst.</Small> : data.recent_updates.map((u: any) => <Row key={u.id} icon="newspaper-outline" title={u.title} subtitle={fmtDate(u.created_at, true)} />)}
-          <Small onPress={() => refetch()} style={{ textAlign: "center", textDecorationLine: "underline" }}>Aktualisieren</Small>
+          <Pressable onPress={() => refetch()} testID="emp-refresh"><Small style={{ textAlign: "center", textDecorationLine: "underline" }}>Aktualisieren</Small></Pressable>
         </ScrollView>
       )}
     </View>
