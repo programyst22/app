@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OKA Bau Fazora redesign integration QA.
+ * OKA Bau Control 2.0 integration QA.
  * Run from frontend/: node scripts/qa-redesign.cjs
  *
  * This deliberately performs only deterministic local checks.
@@ -18,6 +18,11 @@ const required = [
   "app/_layout.tsx",
   "app/(tabs)/index.tsx",
   "app/(tabs)/mein-projekt.tsx",
+  "app/(tabs)/aktivitaet.tsx",
+  "app/(tabs)/medien.tsx",
+  "app/(tabs)/dateien.tsx",
+  "app/(tabs)/profil.tsx",
+  "app/(tabs)/_layout.tsx",
   "app/admin/index.tsx",
   "app/admin/crm.tsx",
   "app/admin/projects.tsx",
@@ -52,7 +57,7 @@ const pass = (m) => console.log("PASS:", m);
 for (const rel of [...required, ...dependencyFiles]) {
   if (!fs.existsSync(path.join(root, rel))) fail(`missing ${rel}`);
 }
-if (!failed) pass("required redesign + original dependency files exist");
+if (!failed) pass("required OKA Control + original dependency files exist");
 
 const pkgPath = path.join(root, "package.json");
 if (!fs.existsSync(pkgPath)) {
@@ -70,7 +75,7 @@ if (!fs.existsSync(pkgPath)) {
   ]) {
     if (!deps[name]) fail(`dependency missing: ${name}`);
   }
-  if (!failed) pass("redesign dependencies declared");
+  if (!failed) pass("OKA Control dependencies declared");
 }
 
 for (const rel of required.filter(x => /\.[tj]sx?$/.test(x))) {
@@ -93,7 +98,7 @@ for (const rel of required.filter(x => /\.[tj]sx?$/.test(x))) {
     fail(`${rel}: ${errors.map(d => ts.flattenDiagnosticMessageText(d.messageText, " ")).join(" | ")}`);
   }
 }
-if (!failed) pass("redesign TS/TSX parses successfully");
+if (!failed) pass("OKA Control TS/TSX parses successfully");
 
 const scanRoots = ["app", "src/components/premium.tsx", "src/components/project-sections.tsx"];
 for (const rel of scanRoots) {
@@ -125,3 +130,19 @@ function walk(dir) {
 
 console.log(failed ? "\nQA RESULT: FAIL" : "\nQA RESULT: PASS");
 process.exit(failed ? 1 : 0);
+
+const controlHome = path.join(root, "app/(tabs)/mein-projekt.tsx");
+if (fs.existsSync(controlHome)) {
+  const src = fs.readFileSync(controlHome, "utf8");
+  for (const marker of ["OKA BAU · CONTROL", "JETZT WICHTIG", "Projekt Pulse"]) {
+    if (!src.toLowerCase().includes(marker.toLowerCase())) fail(`control home marker missing: ${marker}`);
+  }
+}
+const controlTabs = path.join(root, "app/(tabs)/_layout.tsx");
+if (fs.existsSync(controlTabs)) {
+  const src = fs.readFileSync(controlTabs, "utf8");
+  for (const marker of ["Control", "Verlauf", "Medien", "Dateien", "Profil"]) {
+    if (!src.includes(marker)) fail(`control tab missing: ${marker}`);
+  }
+}
+if (!failed) pass("OKA Control navigation and home markers present");
