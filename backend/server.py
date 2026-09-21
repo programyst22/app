@@ -1,4 +1,4 @@
-import asyncio, logging
+import asyncio, logging, inspect
 from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
@@ -57,4 +57,6 @@ async def on_startup():
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    result = client.close()
+    if inspect.isawaitable(result):
+        await result
