@@ -1,4 +1,4 @@
-name: Build Applied V8 APK
+name: Build Android APK (legacy entry)
 on:
   workflow_dispatch:
 permissions:
