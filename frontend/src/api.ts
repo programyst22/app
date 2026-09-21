@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import { storage } from "@/src/utils/storage";
 
-export const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL as string;
+export const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || "https://oka-control-api.onrender.com";
 export const API = `${BACKEND_URL}/api`;
 export const TOKEN_KEY = "oka_access_token";
 
