@@ -1,16 +1,90 @@
 import React, { useState } from "react";
-import { View, ScrollView, Pressable } from "react-native";
+import { View, ScrollView, Pressable, Text, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import Ionicons from "@react-native-vector-icons/ionicons";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { ArrowUpRight01Icon, UserAccountIcon } from "@hugeicons/core-free-icons";
+
 import { api, fmtDate, fmtMoney } from "@/src/api";
 import { useAuth, isStaff, isManagement } from "@/src/auth";
-import { Eyebrow, H1, H2, H3, Body, Small, Caption, Button, Card, Input, Row, Badge, Progress, Loading, Empty, useToast, Stat } from "@/src/components/ui";
-import { makeStyles, useTheme, space } from "@/src/theme";
+import {
+  Eyebrow, H1, H2, Body, Small, Caption, Button, Card, Input,
+  Badge, Progress, Loading, Empty, useToast
+} from "@/src/components/ui";
+import { ArrowPillButton, StrokeIcon } from "@/src/components/premium";
+import { fonts, makeStyles, useTheme, space, radius } from "@/src/theme";
 
-const useStyles = makeStyles((c) => ({ screen: { flex: 1, backgroundColor: c.surface }, divider: { height: 1, backgroundColor: c.divider, flex: 1 } }));
+const useStyles = makeStyles((c) => ({
+  screen: { flex: 1, backgroundColor: c.surface },
+  divider: { height: 1, backgroundColor: c.divider, flex: 1 },
+  shell: { width: "100%", alignSelf: "center", maxWidth: 1180 },
+  overline: {
+    fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.5,
+    color: c.onSurface, textTransform: "uppercase"
+  },
+  heading: {
+    fontFamily: fonts.medium, color: c.onSurface,
+    letterSpacing: -1.4
+  },
+  body: {
+    fontFamily: fonts.regular, color: c.muted,
+    fontSize: 16, lineHeight: 26
+  },
+  heroCard: {
+    backgroundColor: c.surfaceInverse,
+    borderRadius: 26,
+    padding: 28,
+    gap: 20,
+    overflow: "hidden",
+  },
+  metric: {
+    flex: 1, minWidth: 150, backgroundColor: c.surfaceSecondary,
+    borderRadius: 18, padding: 22, borderWidth: 1, borderColor: c.border, gap: 8,
+  },
+  metricValue: {
+    fontFamily: fonts.semibold, fontSize: 34, color: c.onSurface, letterSpacing: -1,
+  },
+  metricLabel: {
+    fontFamily: fonts.regular, fontSize: 13, color: c.muted, lineHeight: 18,
+  },
+  rowCard: {
+    backgroundColor: c.surfaceSecondary,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: c.border,
+    overflow: "hidden",
+  },
+  row: {
+    minHeight: 72,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: c.divider,
+  },
+  rowTitle: { flex: 1, fontFamily: fonts.semibold, color: c.onSurface, fontSize: 15, lineHeight: 21 },
+  rowSub: { fontFamily: fonts.regular, color: c.muted, fontSize: 13, lineHeight: 19, marginTop: 3 },
+  portalCard: {
+    borderRadius: 22,
+    padding: 24,
+    backgroundColor: c.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: c.border,
+    gap: 12,
+  },
+  authCard: {
+    backgroundColor: c.surfaceSecondary,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: c.border,
+    padding: 24,
+    gap: 16,
+  },
+}));
 
 export default function MeinProjekt() {
   const { user } = useAuth();
@@ -25,12 +99,14 @@ function AuthScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const { login, register, loginWithGoogle } = useAuth();
   const toast = useToast();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [f, setF] = useState({ email: "", password: "", first_name: "", last_name: "", phone: "" });
   const [busy, setBusy] = useState(false);
   const { data: setup } = useQuery({ queryKey: ["setup-status"], queryFn: () => api("/auth/setup/status") });
+
   const submit = async () => {
     setBusy(true);
     try {
@@ -42,27 +118,74 @@ function AuthScreen() {
       setBusy(false);
     }
   };
+
   return (
     <View style={s.screen}>
-      <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={{ paddingTop: insets.top + space.xl, paddingHorizontal: space.xl, paddingBottom: space.xxxl, gap: space.lg }}>
-        <Eyebrow>Kundenportal</Eyebrow>
-        {setup?.needs_setup ? <Card dark style={{ gap: space.sm }} testID="setup-hint"><Small onDark>Noch kein Administrator eingerichtet.</Small><Button title="Ersteinrichtung starten" variant="accent" small onPress={() => router.push("/setup")} testID="setup-start" /></Card> : null}
-        <H1>{mode === "login" ? "Willkommen zurück." : "Konto erstellen."}</H1>
-        <Small>Verfolgen Sie Ihr Projekt in 3D, chatten Sie mit Ihrem Projektteam und verwalten Sie Dokumente, Angebote und Rechnungen.</Small>
-        {mode === "register" ? (
-          <View style={{ flexDirection: "row", gap: space.md }}>
-            <View style={{ flex: 1 }}><Input label="Vorname" value={f.first_name} onChangeText={(v) => setF({ ...f, first_name: v })} testID="register-first-name" /></View>
-            <View style={{ flex: 1 }}><Input label="Nachname" value={f.last_name} onChangeText={(v) => setF({ ...f, last_name: v })} testID="register-last-name" /></View>
-          </View>
-        ) : null}
-        <Input label="E-Mail" value={f.email} onChangeText={(v) => setF({ ...f, email: v })} autoCapitalize="none" keyboardType="email-address" autoComplete="email" testID="login-email" />
-        <Input label="Passwort" value={f.password} onChangeText={(v) => setF({ ...f, password: v })} secureTextEntry testID="login-password" />
-        <Button title={mode === "login" ? "Anmelden" : "Registrieren"} onPress={submit} loading={busy} testID="login-submit" />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}><View style={s.divider} /><Caption>oder</Caption><View style={s.divider} /></View>
-        <Button title="Mit Google anmelden" variant="light" icon="logo-google" onPress={() => loginWithGoogle().catch((e) => toast.show(e.message, "error"))} testID="login-google" />
-        <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.sm }}>
-          <Pressable onPress={() => setMode(mode === "login" ? "register" : "login")} testID="toggle-auth-mode"><Small style={{ color: colors.brandPrimary, fontWeight: "600" }}>{mode === "login" ? "Neues Konto erstellen" : "Ich habe bereits ein Konto"}</Small></Pressable>
-          <Pressable onPress={() => router.push("/auth/reset")} testID="forgot-password"><Small style={{ textDecorationLine: "underline" }}>Passwort vergessen?</Small></Pressable>
+      <KeyboardAwareScrollView
+        bottomOffset={24}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingTop: insets.top + 36,
+          paddingHorizontal: width < 700 ? 20 : 36,
+          paddingBottom: 60,
+          justifyContent: "center",
+        }}
+      >
+        <View style={[s.shell, { maxWidth: 680, gap: 22 }]}>
+          <Animated.View entering={FadeInDown.duration(500)}>
+            <Text style={s.overline}>OKA BAU · KUNDENPORTAL</Text>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(80).duration(550)}>
+            <Text style={[s.heading, { fontSize: width < 700 ? 38 : 52, lineHeight: width < 700 ? 43 : 58 }]}>
+              {mode === "login" ? "Willkommen zurück." : "Konto erstellen."}
+            </Text>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(160).duration(600)}>
+            <Text style={s.body}>
+              Verfolgen Sie Ihr Projekt, chatten Sie mit Ihrem Projektteam und verwalten Sie Dokumente,
+              Angebote, Rechnungen und Termine an einem Ort.
+            </Text>
+          </Animated.View>
+
+          {setup?.needs_setup ? (
+            <Card dark style={{ gap: space.sm }} testID="setup-hint">
+              <Small onDark>Noch kein Administrator eingerichtet.</Small>
+              <Button title="Ersteinrichtung starten" small onPress={() => router.push("/setup")} testID="setup-start" />
+            </Card>
+          ) : null}
+
+          <Animated.View entering={FadeInDown.delay(240).duration(600)} style={s.authCard}>
+            {mode === "register" ? (
+              <View style={{ flexDirection: width < 560 ? "column" : "row", gap: space.md }}>
+                <View style={{ flex: 1 }}><Input label="Vorname" value={f.first_name} onChangeText={(v) => setF({ ...f, first_name: v })} testID="register-first-name" /></View>
+                <View style={{ flex: 1 }}><Input label="Nachname" value={f.last_name} onChangeText={(v) => setF({ ...f, last_name: v })} testID="register-last-name" /></View>
+              </View>
+            ) : null}
+
+            <Input label="E-Mail" value={f.email} onChangeText={(v) => setF({ ...f, email: v })} autoCapitalize="none" keyboardType="email-address" autoComplete="email" testID="login-email" />
+            <Input label="Passwort" value={f.password} onChangeText={(v) => setF({ ...f, password: v })} secureTextEntry testID="login-password" />
+
+            <Button title={mode === "login" ? "Anmelden" : "Registrieren"} onPress={submit} loading={busy} testID="login-submit" />
+
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+              <View style={s.divider} /><Caption>oder</Caption><View style={s.divider} />
+            </View>
+
+            <Button title="Mit Google anmelden" variant="light" onPress={() => loginWithGoogle().catch((e) => toast.show(e.message, "error"))} testID="login-google" />
+
+            <View style={{ flexDirection: width < 560 ? "column" : "row", justifyContent: "space-between", gap: 12, paddingTop: 4 }}>
+              <Pressable onPress={() => setMode(mode === "login" ? "register" : "login")} testID="toggle-auth-mode">
+                <Small style={{ color: colors.onSurface, fontFamily: fonts.semibold }}>
+                  {mode === "login" ? "Neues Konto erstellen" : "Ich habe bereits ein Konto"}
+                </Small>
+              </Pressable>
+              <Pressable onPress={() => router.push("/auth/reset")} testID="forgot-password">
+                <Small style={{ textDecorationLine: "underline" }}>Passwort vergessen?</Small>
+              </Pressable>
+            </View>
+          </Animated.View>
         </View>
       </KeyboardAwareScrollView>
     </View>
@@ -71,29 +194,80 @@ function AuthScreen() {
 
 function StaffHub() {
   const s = useStyles();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { width } = useWindowDimensions();
+
+  const PortalCard = ({ title, text, onPress, dark = false, testID }: any) => (
+    <Pressable
+      onPress={onPress}
+      testID={testID}
+      style={[
+        s.portalCard,
+        dark && { backgroundColor: colors.surfaceInverse, borderColor: colors.surfaceInverse },
+      ]}
+    >
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 16 }}>
+        <View style={{ flex: 1, gap: 8 }}>
+          <Text style={{ fontFamily: fonts.semibold, fontSize: 24, color: dark ? "#fff" : colors.onSurface }}>
+            {title}
+          </Text>
+          <Text style={[s.body, dark && { color: "rgba(255,255,255,.72)" }]}>{text}</Text>
+        </View>
+        <StrokeIcon icon={ArrowUpRight01Icon} size={24} color={dark ? "#fff" : colors.onSurface} />
+      </View>
+    </Pressable>
+  );
+
   return (
     <View style={s.screen}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.xl, paddingHorizontal: space.xl, gap: space.lg, paddingBottom: space.xxxl }}>
-        <Eyebrow>Angemeldet als {user?.role}</Eyebrow>
-        <H1>Guten Tag, {user?.first_name}</H1>
-        {isManagement(user) ? (
-          <Card dark onPress={() => router.push("/admin")} testID="open-admin" style={{ gap: space.sm }}>
-            <Ionicons name="grid-outline" size={26} color="#FFFFFF" />
-            <H2 onDark>Admin & CRM</H2>
-            <Small onDark>Dashboard, Pipeline, Projekte, Angebote, 3D-Editor</Small>
-          </Card>
-        ) : null}
-        <Card onPress={() => router.push("/employee")} testID="open-employee" style={{ gap: space.sm }}>
-          <Ionicons name="hammer-outline" size={26} color="#1A1A1A" />
-          <H2>Mitarbeiterportal</H2>
-          <Small>Meine Projekte, Aufgaben, Termine, Bautagebuch, Uploads</Small>
-        </Card>
-        <Button title="Abmelden" variant="ghost" onPress={logout} testID="logout-button" />
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 40, paddingHorizontal: width < 700 ? 20 : 36, gap: 24, paddingBottom: 64 }}>
+        <View style={s.shell}>
+          <Text style={s.overline}>ANGEMELDET ALS {user?.role}</Text>
+          <Text style={[s.heading, { fontSize: width < 700 ? 38 : 52, lineHeight: width < 700 ? 43 : 58, marginTop: 10 }]}>
+            Guten Tag, {user?.first_name}.
+          </Text>
+
+          <View style={{ gap: 18, marginTop: 32 }}>
+            {isManagement(user) ? (
+              <PortalCard
+                dark
+                title="Admin & CRM"
+                text="Dashboard, Pipeline, Projekte, Angebote, Rechnungen, Team und 3D-Editor."
+                onPress={() => router.push("/admin")}
+                testID="open-admin"
+              />
+            ) : null}
+            <PortalCard
+              title="Mitarbeiterportal"
+              text="Meine Projekte, Aufgaben, Termine, Bautagebuch und Uploads."
+              onPress={() => router.push("/employee")}
+              testID="open-employee"
+            />
+          </View>
+
+          <View style={{ marginTop: 26 }}>
+            <Button title="Abmelden" variant="ghost" onPress={logout} testID="logout-button" />
+          </View>
+        </View>
       </ScrollView>
     </View>
+  );
+}
+
+function PortalRow({ title, subtitle, onPress, testID, last = false }: any) {
+  const s = useStyles();
+  const { colors } = useTheme();
+  return (
+    <Pressable testID={testID} onPress={onPress} disabled={!onPress} style={[s.row, last && { borderBottomWidth: 0 }]}>
+      <View style={{ flex: 1 }}>
+        <Text style={s.rowTitle}>{title}</Text>
+        {subtitle ? <Text style={s.rowSub}>{subtitle}</Text> : null}
+      </View>
+      {onPress ? <StrokeIcon icon={ArrowUpRight01Icon} size={20} color={colors.onSurface} /> : null}
+    </Pressable>
   );
 }
 
@@ -102,61 +276,158 @@ function ClientDashboard() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const { user, logout } = useAuth();
-  const { data, isLoading, refetch } = useQuery({ queryKey: ["client-dashboard"], queryFn: () => api("/client/dashboard"), refetchInterval: 20000 });
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["client-dashboard"],
+    queryFn: () => api("/client/dashboard"),
+    refetchInterval: 20000,
+  });
+
   const p = data?.active_project;
+  const headingSize = width < 700 ? 38 : 52;
+
   return (
     <View style={s.screen}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.xl, paddingHorizontal: space.xl, gap: space.lg, paddingBottom: space.xxxl }} testID="client-dashboard">
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <View style={{ gap: 4 }}>
-            <Eyebrow>Kundenportal</Eyebrow>
-            <H1 testID="greeting">Guten Tag, {data?.greeting_name || user?.first_name}</H1>
-          </View>
-          <Pressable onPress={logout} testID="logout-button" hitSlop={8} style={{ paddingTop: space.lg }}><Ionicons name="log-out-outline" size={22} color={colors.muted} /></Pressable>
-        </View>
-        {isLoading ? <Loading text="Projekt wird geladen…" /> : !p ? (
-          <Card style={{ gap: space.md }} testID="no-project-card">
-            <Empty icon="home-outline" title="Noch keine aktiven Projekte" text="Sobald OKA Bau Ihre Anfrage in ein Projekt überführt, erscheint es hier – inklusive 3D-Ansicht, Fortschritt und Chat." action={<Button title="Projekt anfragen" variant="accent" onPress={() => router.push("/anfrage")} testID="no-project-request" />} />
-          </Card>
-        ) : (
-          <>
-            <Card dark style={{ gap: space.md }} onPress={() => router.push(`/client/project/${p.id}`)} testID="active-project-card">
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Eyebrow onDark>Aktives Projekt · {p.number}</Eyebrow>
-                <Badge status={p.status} />
-              </View>
-              <H2 onDark>{p.name}</H2>
-              <Small style={{ color: colors.sand }}>{p.address}</Small>
-              <View style={{ gap: 6 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Caption onDark>Aktuelle Phase: {p.stage}</Caption><Caption onDark>{p.progress}%</Caption></View>
-                <Progress value={p.progress} />
-              </View>
-              <View style={{ flexDirection: "row", gap: space.md, flexWrap: "wrap" }}>
-                <Button title="Mein Projekt" variant="accent" small onPress={() => router.push(`/client/project/${p.id}`)} testID="open-project" />
-                <Button title="3D ansehen" variant="ghostDark" small icon="cube-outline" onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "3D Projekt" } })} testID="open-3d" />
-              </View>
-            </Card>
-            <View style={{ flexDirection: "row", gap: space.md, flexWrap: "wrap" }}>
-              <Stat label="Ungelesene Nachrichten" value={p.unread_messages} accent={p.unread_messages > 0} onPress={() => router.push(`/client/chat/${p.id}`)} testID="stat-messages" />
-              <Stat label="Neue Dokumente" value={p.new_documents} onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Dokumente" } })} testID="stat-documents" />
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 34,
+          paddingHorizontal: width < 700 ? 20 : 36,
+          paddingBottom: 70,
+        }}
+        testID="client-dashboard"
+      >
+        <View style={[s.shell, { gap: 22 }]}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 18 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.overline}>MEIN PROJEKT</Text>
+              <Text testID="greeting" style={[s.heading, { fontSize: headingSize, lineHeight: headingSize * 1.08, marginTop: 9 }]}>
+                Guten Tag, {data?.greeting_name || user?.first_name}.
+              </Text>
             </View>
-            <Card style={{ gap: space.sm }}>
-              <Row icon="person-outline" title={p.project_manager ? `${p.project_manager.first_name} ${p.project_manager.last_name}` : "–"} subtitle="Projektleitung" />
-              <Row icon="calendar-outline" title={p.next_appointment ? `${p.next_appointment.type} · ${fmtDate(p.next_appointment.start, true)}` : "Kein Termin geplant"} subtitle="Nächster Termin" onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Termine" } })} testID="row-appointment" />
-              <Row icon="newspaper-outline" title={p.latest_update?.title || "Noch keine Aktualisierung"} subtitle={p.latest_update ? fmtDate(p.latest_update.created_at) : "Letzte Aktualisierung"} onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Timeline" } })} testID="row-update" />
-              {p.open_offer ? <Row icon="document-text-outline" title={`Angebot ${p.open_offer.number} · ${fmtMoney(p.open_offer.total)}`} subtitle="Offenes Angebot – jetzt ansehen" onPress={() => router.push(`/client/offer/${p.open_offer.id}`)} testID="row-offer" /> : null}
-              {p.open_invoice ? <Row icon="card-outline" title={`Rechnung ${p.open_invoice.number} · ${fmtMoney(p.open_invoice.total)}`} subtitle={`Fällig ${fmtDate(p.open_invoice.due_date)}`} onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Rechnungen" } })} testID="row-invoice" /> : null}
-            </Card>
-            {data.projects.length > 1 ? (
-              <View style={{ gap: space.sm }}>
-                <Eyebrow>Weitere Projekte</Eyebrow>
-                {data.projects.filter((x: any) => x.id !== p.id).map((x: any) => <Row key={x.id} title={`${x.number} · ${x.name}`} subtitle={x.stage} onPress={() => router.push(`/client/project/${x.id}`)} />)}
+            <Pressable onPress={logout} testID="logout-button" hitSlop={8} style={{ width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
+              <StrokeIcon icon={UserAccountIcon} size={21} color={colors.onSurface} />
+            </Pressable>
+          </View>
+
+          {isLoading ? <Loading text="Projekt wird geladen…" /> : !p ? (
+            <View style={s.portalCard} testID="no-project-card">
+              <Empty
+                title="Noch keine aktiven Projekte"
+                text="Sobald OKA Bau Ihre Anfrage in ein Projekt überführt, erscheint es hier – inklusive Fortschritt, Dokumenten, Chat und 3D-Ansicht."
+                action={<Button title="Projekt anfragen" onPress={() => router.push("/anfrage")} testID="no-project-request" />}
+              />
+            </View>
+          ) : (
+            <>
+              <Animated.View entering={FadeInDown.duration(600)}>
+                <Pressable onPress={() => router.push(`/client/project/${p.id}`)} testID="active-project-card" style={s.heroCard}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <Text style={{ color: "rgba(255,255,255,.7)", fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.2 }}>
+                      AKTIVES PROJEKT · {p.number}
+                    </Text>
+                    <Badge status={p.status} />
+                  </View>
+
+                  <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: width < 700 ? 30 : 38, lineHeight: width < 700 ? 35 : 43, letterSpacing: -1 }}>
+                    {p.name}
+                  </Text>
+                  <Text style={{ color: "rgba(255,255,255,.7)", fontFamily: fonts.regular, fontSize: 15 }}>{p.address}</Text>
+
+                  <View style={{ gap: 9 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+                      <Text style={{ color: "rgba(255,255,255,.72)", fontFamily: fonts.regular, fontSize: 13 }}>
+                        Aktuelle Phase · {p.stage}
+                      </Text>
+                      <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: 14 }}>{p.progress}%</Text>
+                    </View>
+                    <Progress value={p.progress} />
+                  </View>
+
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+                    <ArrowPillButton label="Mein Projekt" onPress={() => router.push(`/client/project/${p.id}`)} />
+                    <ArrowPillButton
+                      label="3D Projekt"
+                      onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "3D Projekt" } })}
+                    />
+                  </View>
+                </Pressable>
+              </Animated.View>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
+                <Pressable style={s.metric} onPress={() => router.push(`/client/chat/${p.id}`)} testID="stat-messages">
+                  <Text style={s.metricValue}>{p.unread_messages}</Text>
+                  <Text style={s.metricLabel}>Ungelesene Nachrichten</Text>
+                </Pressable>
+                <Pressable style={s.metric} onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Dokumente" } })} testID="stat-documents">
+                  <Text style={s.metricValue}>{p.new_documents}</Text>
+                  <Text style={s.metricLabel}>Neue Dokumente</Text>
+                </Pressable>
+                <View style={s.metric}>
+                  <Text style={s.metricValue}>{p.progress}%</Text>
+                  <Text style={s.metricLabel}>Projektfortschritt</Text>
+                </View>
               </View>
-            ) : null}
-          </>
-        )}
-        <Button title="Aktualisieren" variant="ghost" small onPress={() => refetch()} testID="refresh-dashboard" />
+
+              <View style={s.rowCard}>
+                <PortalRow
+                  title={p.project_manager ? `${p.project_manager.first_name} ${p.project_manager.last_name}` : "–"}
+                  subtitle="Projektleitung"
+                />
+                <PortalRow
+                  title={p.next_appointment ? `${p.next_appointment.type} · ${fmtDate(p.next_appointment.start, true)}` : "Kein Termin geplant"}
+                  subtitle="Nächster Termin"
+                  onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Termine" } })}
+                  testID="row-appointment"
+                />
+                <PortalRow
+                  title={p.latest_update?.title || "Noch keine Aktualisierung"}
+                  subtitle={p.latest_update ? fmtDate(p.latest_update.created_at) : "Letzte Aktualisierung"}
+                  onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Timeline" } })}
+                  testID="row-update"
+                />
+                {p.open_offer ? (
+                  <PortalRow
+                    title={`Angebot ${p.open_offer.number} · ${fmtMoney(p.open_offer.total)}`}
+                    subtitle="Offenes Angebot – jetzt ansehen"
+                    onPress={() => router.push(`/client/offer/${p.open_offer.id}`)}
+                    testID="row-offer"
+                  />
+                ) : null}
+                {p.open_invoice ? (
+                  <PortalRow
+                    title={`Rechnung ${p.open_invoice.number} · ${fmtMoney(p.open_invoice.total)}`}
+                    subtitle={`Fällig ${fmtDate(p.open_invoice.due_date)}`}
+                    onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Rechnungen" } })}
+                    testID="row-invoice"
+                    last
+                  />
+                ) : null}
+              </View>
+
+              {data.projects.length > 1 ? (
+                <View style={{ gap: 12 }}>
+                  <Text style={s.overline}>WEITERE PROJEKTE</Text>
+                  <View style={s.rowCard}>
+                    {data.projects.filter((x: any) => x.id !== p.id).map((x: any, idx: number, arr: any[]) => (
+                      <PortalRow
+                        key={x.id}
+                        title={`${x.number} · ${x.name}`}
+                        subtitle={x.stage}
+                        onPress={() => router.push(`/client/project/${x.id}`)}
+                        last={idx === arr.length - 1}
+                      />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+            </>
+          )}
+
+          <View style={{ alignItems: "flex-start" }}>
+            <Button title="Aktualisieren" variant="ghost" small onPress={() => refetch()} testID="refresh-dashboard" />
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
