@@ -1,110 +1,149 @@
 import React, { useState } from "react";
-import { View, ScrollView, Pressable, Text, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { ArrowUpRight01Icon, UserAccountIcon } from "@hugeicons/core-free-icons";
-
-import { api, fmtDate, fmtMoney } from "@/src/api";
-import { useAuth, isStaff, isManagement } from "@/src/auth";
 import {
-  Eyebrow, H1, H2, Body, Small, Caption, Button, Card, Input,
-  Badge, Progress, Loading, Empty, useToast
-} from "@/src/components/ui";
-import { ArrowPillButton, StrokeIcon } from "@/src/components/premium";
-import { fonts, makeStyles, useTheme, space, radius } from "@/src/theme";
+  ArrowRight01Icon,
+  Camera01Icon,
+  Chat01Icon,
+  File01Icon,
+  Logout01Icon,
+  Notification01Icon,
+  UserAccountIcon,
+} from "@hugeicons/core-free-icons";
+
+import { abs, api, fmtDate } from "@/src/api";
+import { isManagement, isStaff, useAuth } from "@/src/auth";
+import { Button, Input, Loading, Small, useToast } from "@/src/components/ui";
+import { StrokeIcon } from "@/src/components/premium";
+import { fonts, makeStyles, useTheme } from "@/src/theme";
 
 const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
-  divider: { height: 1, backgroundColor: c.divider, flex: 1 },
-  shell: { width: "100%", alignSelf: "center", maxWidth: 1180 },
-  overline: {
-    fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.5,
-    color: c.onSurface, textTransform: "uppercase"
+  shell: { width: "100%", maxWidth: 980, alignSelf: "center" },
+  eyebrow: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: c.muted,
+    textTransform: "uppercase",
   },
-  heading: {
-    fontFamily: fonts.medium, color: c.onSurface,
-    letterSpacing: -1.4
+  title: {
+    fontFamily: fonts.semibold,
+    color: c.onSurface,
+    letterSpacing: -1.5,
   },
   body: {
-    fontFamily: fonts.regular, color: c.muted,
-    fontSize: 16, lineHeight: 26
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 23,
+    color: c.muted,
   },
-  heroCard: {
+  hero: {
+    minHeight: 350,
+    borderRadius: 30,
+    overflow: "hidden",
     backgroundColor: c.surfaceInverse,
-    borderRadius: 26,
-    padding: 28,
-    gap: 20,
+  },
+  heroOverlay: {
+    flex: 1,
+    minHeight: 350,
+    padding: 24,
+    justifyContent: "space-between",
+  },
+  statusPill: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: "rgba(255,255,255,.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,.18)",
+  },
+  progressTrack: {
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,.18)",
     overflow: "hidden",
   },
-  metric: {
-    flex: 1, minWidth: 150, backgroundColor: c.surfaceSecondary,
-    borderRadius: 18, padding: 22, borderWidth: 1, borderColor: c.border, gap: 8,
-  },
-  metricValue: {
-    fontFamily: fonts.semibold, fontSize: 34, color: c.onSurface, letterSpacing: -1,
-  },
-  metricLabel: {
-    fontFamily: fonts.regular, fontSize: 13, color: c.muted, lineHeight: 18,
-  },
-  rowCard: {
+  quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  quick: {
+    flexGrow: 1,
+    flexBasis: 150,
+    minHeight: 112,
+    borderRadius: 22,
     backgroundColor: c.surfaceSecondary,
-    borderRadius: 18,
+    padding: 18,
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  activity: {
+    borderRadius: 24,
+    backgroundColor: c.surfaceSecondary,
     borderWidth: 1,
     borderColor: c.border,
     overflow: "hidden",
   },
-  row: {
-    minHeight: 72,
-    paddingHorizontal: 20,
+  activityRow: {
+    minHeight: 78,
+    paddingHorizontal: 18,
     paddingVertical: 16,
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: 14,
     borderBottomWidth: 1,
     borderBottomColor: c.divider,
   },
-  rowTitle: { flex: 1, fontFamily: fonts.semibold, color: c.onSurface, fontSize: 15, lineHeight: 21 },
-  rowSub: { fontFamily: fonts.regular, color: c.muted, fontSize: 13, lineHeight: 19, marginTop: 3 },
-  portalCard: {
-    borderRadius: 22,
-    padding: 24,
-    backgroundColor: c.surfaceSecondary,
-    borderWidth: 1,
-    borderColor: c.border,
-    gap: 12,
+  icon: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: c.surfaceSoft,
+    alignItems: "center",
+    justifyContent: "center",
   },
   authCard: {
+    borderRadius: 28,
     backgroundColor: c.surfaceSecondary,
-    borderRadius: 26,
     borderWidth: 1,
     borderColor: c.border,
+    padding: 22,
+    gap: 15,
+  },
+  staffCard: {
+    minHeight: 170,
+    borderRadius: 28,
     padding: 24,
-    gap: 16,
+    justifyContent: "space-between",
+    backgroundColor: c.surfaceInverse,
   },
 }));
 
-export default function MeinProjekt() {
+export default function ControlHome() {
   const { user } = useAuth();
-  if (user === undefined) return <View style={{ flex: 1 }}><Loading text="Sitzung wird geprüft…" /></View>;
+  if (user === undefined) return <Loading text="OKA CONTROL wird geladen…" />;
   if (!user) return <AuthScreen />;
   if (isStaff(user)) return <StaffHub />;
-  return <ClientDashboard />;
+  return <ClientControl />;
 }
 
 function AuthScreen() {
   const s = useStyles();
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const { login, register, loginWithGoogle } = useAuth();
   const toast = useToast();
+  const { login, register, loginWithGoogle } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [f, setF] = useState({ email: "", password: "", first_name: "", last_name: "", phone: "" });
   const [busy, setBusy] = useState(false);
+  const [f, setF] = useState({ email: "", password: "", first_name: "", last_name: "", phone: "" });
   const { data: setup } = useQuery({ queryKey: ["setup-status"], queryFn: () => api("/auth/setup/status") });
 
   const submit = async () => {
@@ -119,72 +158,50 @@ function AuthScreen() {
     }
   };
 
+  const big = width < 700 ? 43 : 58;
   return (
-    <View style={s.screen}>
+    <View style={[s.screen, { backgroundColor: colors.surfaceInverse }]}>
       <KeyboardAwareScrollView
         bottomOffset={24}
         contentContainerStyle={{
           flexGrow: 1,
-          paddingTop: insets.top + 36,
-          paddingHorizontal: width < 700 ? 20 : 36,
-          paddingBottom: 60,
+          paddingTop: insets.top + 44,
+          paddingHorizontal: width < 700 ? 20 : 34,
+          paddingBottom: 44,
           justifyContent: "center",
         }}
       >
-        <View style={[s.shell, { maxWidth: 680, gap: 22 }]}>
-          <Animated.View entering={FadeInDown.duration(500)}>
-            <Text style={s.overline}>OKA BAU · KUNDENPORTAL</Text>
-          </Animated.View>
-
-          <Animated.View entering={FadeInDown.delay(80).duration(550)}>
-            <Text style={[s.heading, { fontSize: width < 700 ? 38 : 52, lineHeight: width < 700 ? 43 : 58 }]}>
-              {mode === "login" ? "Willkommen zurück." : "Konto erstellen."}
+        <View style={[s.shell, { maxWidth: 620, gap: 26 }]}>
+          <Animated.View entering={FadeInDown.duration(450)}>
+            <Text style={[s.eyebrow, { color: "rgba(255,255,255,.56)" }]}>OKA BAU · CONTROL</Text>
+            <Text style={[s.title, { color: "#fff", fontSize: big, lineHeight: big * 1.02, marginTop: 12 }]}>
+              Ihr Projekt.{"\n"}Jederzeit im Blick.
+            </Text>
+            <Text style={[s.body, { color: "rgba(255,255,255,.62)", marginTop: 18, maxWidth: 520 }]}>
+              Fortschritt, Fotos, Dokumente und direkte Kommunikation mit OKA Bau – ohne Umwege.
             </Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(160).duration(600)}>
-            <Text style={s.body}>
-              Verfolgen Sie Ihr Projekt, chatten Sie mit Ihrem Projektteam und verwalten Sie Dokumente,
-              Angebote, Rechnungen und Termine an einem Ort.
-            </Text>
-          </Animated.View>
-
-          {setup?.needs_setup ? (
-            <Card dark style={{ gap: space.sm }} testID="setup-hint">
-              <Small onDark>Noch kein Administrator eingerichtet.</Small>
-              <Button title="Ersteinrichtung starten" small onPress={() => router.push("/setup")} testID="setup-start" />
-            </Card>
-          ) : null}
-
-          <Animated.View entering={FadeInDown.delay(240).duration(600)} style={s.authCard}>
+          <Animated.View entering={FadeInDown.delay(120).duration(500)} style={s.authCard}>
             {mode === "register" ? (
-              <View style={{ flexDirection: width < 560 ? "column" : "row", gap: space.md }}>
-                <View style={{ flex: 1 }}><Input label="Vorname" value={f.first_name} onChangeText={(v) => setF({ ...f, first_name: v })} testID="register-first-name" /></View>
-                <View style={{ flex: 1 }}><Input label="Nachname" value={f.last_name} onChangeText={(v) => setF({ ...f, last_name: v })} testID="register-last-name" /></View>
+              <View style={{ flexDirection: width < 520 ? "column" : "row", gap: 12 }}>
+                <View style={{ flex: 1 }}><Input label="Vorname" value={f.first_name} onChangeText={(v) => setF({ ...f, first_name: v })} /></View>
+                <View style={{ flex: 1 }}><Input label="Nachname" value={f.last_name} onChangeText={(v) => setF({ ...f, last_name: v })} /></View>
               </View>
             ) : null}
-
-            <Input label="E-Mail" value={f.email} onChangeText={(v) => setF({ ...f, email: v })} autoCapitalize="none" keyboardType="email-address" autoComplete="email" testID="login-email" />
-            <Input label="Passwort" value={f.password} onChangeText={(v) => setF({ ...f, password: v })} secureTextEntry testID="login-password" />
-
-            <Button title={mode === "login" ? "Anmelden" : "Registrieren"} onPress={submit} loading={busy} testID="login-submit" />
-
-            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-              <View style={s.divider} /><Caption>oder</Caption><View style={s.divider} />
-            </View>
-
-            <Button title="Mit Google anmelden" variant="light" onPress={() => loginWithGoogle().catch((e) => toast.show(e.message, "error"))} testID="login-google" />
-
-            <View style={{ flexDirection: width < 560 ? "column" : "row", justifyContent: "space-between", gap: 12, paddingTop: 4 }}>
-              <Pressable onPress={() => setMode(mode === "login" ? "register" : "login")} testID="toggle-auth-mode">
-                <Small style={{ color: colors.onSurface, fontFamily: fonts.semibold }}>
-                  {mode === "login" ? "Neues Konto erstellen" : "Ich habe bereits ein Konto"}
+            <Input label="E-Mail" value={f.email} onChangeText={(v) => setF({ ...f, email: v })} autoCapitalize="none" keyboardType="email-address" />
+            <Input label="Passwort" value={f.password} onChangeText={(v) => setF({ ...f, password: v })} secureTextEntry />
+            <Button title={mode === "login" ? "Control öffnen" : "Konto erstellen"} onPress={submit} loading={busy} />
+            <Button title="Mit Google anmelden" variant="light" onPress={() => loginWithGoogle().catch((e) => toast.show(e.message, "error"))} />
+            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+              <Pressable onPress={() => setMode(mode === "login" ? "register" : "login")}>
+                <Small style={{ fontFamily: fonts.semibold, color: colors.onSurface }}>
+                  {mode === "login" ? "Neues Konto" : "Zur Anmeldung"}
                 </Small>
               </Pressable>
-              <Pressable onPress={() => router.push("/auth/reset")} testID="forgot-password">
-                <Small style={{ textDecorationLine: "underline" }}>Passwort vergessen?</Small>
-              </Pressable>
+              <Pressable onPress={() => router.push("/auth/reset")}><Small>Passwort vergessen?</Small></Pressable>
             </View>
+            {setup?.needs_setup ? <Button title="Ersteinrichtung" variant="ghost" onPress={() => router.push("/setup")} /> : null}
           </Animated.View>
         </View>
       </KeyboardAwareScrollView>
@@ -194,241 +211,180 @@ function AuthScreen() {
 
 function StaffHub() {
   const s = useStyles();
-  const { colors } = useTheme();
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const big = width < 700 ? 40 : 54;
+  return (
+    <ScrollView style={s.screen} contentContainerStyle={{ paddingTop: insets.top + 34, paddingHorizontal: 20, paddingBottom: 48 }}>
+      <View style={[s.shell, { gap: 18 }]}>
+        <Text style={s.eyebrow}>OKA CONTROL · {user?.role}</Text>
+        <Text style={[s.title, { fontSize: big, lineHeight: big * 1.03 }]}>Guten Tag,{"\n"}{user?.first_name}.</Text>
+        <Text style={s.body}>Wählen Sie Ihren Arbeitsbereich. Die öffentliche Marketing-App ist nicht mehr Teil Ihres Workflows.</Text>
+
+        {isManagement(user) ? (
+          <Pressable style={s.staffCard} onPress={() => router.push("/admin")}>
+            <Text style={{ color: "rgba(255,255,255,.58)", fontFamily: fonts.bold, fontSize: 11, letterSpacing: 1.4 }}>MANAGEMENT</Text>
+            <View>
+              <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: 29, letterSpacing: -1 }}>Admin & CRM</Text>
+              <Text style={{ color: "rgba(255,255,255,.62)", fontFamily: fonts.regular, fontSize: 14, marginTop: 7 }}>Pipeline, Projekte, Team, Angebote und Rechnungen.</Text>
+            </View>
+          </Pressable>
+        ) : null}
+
+        <Pressable style={[s.staffCard, { backgroundColor: "#232420" }]} onPress={() => router.push("/employee")}>
+          <Text style={{ color: "rgba(255,255,255,.58)", fontFamily: fonts.bold, fontSize: 11, letterSpacing: 1.4 }}>BAUSTELLE</Text>
+          <View>
+            <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: 29, letterSpacing: -1 }}>Mitarbeiter</Text>
+            <Text style={{ color: "rgba(255,255,255,.62)", fontFamily: fonts.regular, fontSize: 14, marginTop: 7 }}>Heute, Aufgaben, Baustellen, Fotos und Bautagebuch.</Text>
+          </View>
+        </Pressable>
+
+        <Button title="Abmelden" variant="ghost" onPress={logout} />
+      </View>
+    </ScrollView>
+  );
+}
+
+function ClientControl() {
+  const s = useStyles();
+  const { colors } = useTheme();
   const { width } = useWindowDimensions();
-
-  const PortalCard = ({ title, text, onPress, dark = false, testID }: any) => (
-    <Pressable
-      onPress={onPress}
-      testID={testID}
-      style={[
-        s.portalCard,
-        dark && { backgroundColor: colors.surfaceInverse, borderColor: colors.surfaceInverse },
-      ]}
-    >
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 16 }}>
-        <View style={{ flex: 1, gap: 8 }}>
-          <Text style={{ fontFamily: fonts.semibold, fontSize: 24, color: dark ? "#fff" : colors.onSurface }}>
-            {title}
-          </Text>
-          <Text style={[s.body, dark && { color: "rgba(255,255,255,.72)" }]}>{text}</Text>
-        </View>
-        <StrokeIcon icon={ArrowUpRight01Icon} size={24} color={dark ? "#fff" : colors.onSurface} />
-      </View>
-    </Pressable>
-  );
-
-  return (
-    <View style={s.screen}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 40, paddingHorizontal: width < 700 ? 20 : 36, gap: 24, paddingBottom: 64 }}>
-        <View style={s.shell}>
-          <Text style={s.overline}>ANGEMELDET ALS {user?.role}</Text>
-          <Text style={[s.heading, { fontSize: width < 700 ? 38 : 52, lineHeight: width < 700 ? 43 : 58, marginTop: 10 }]}>
-            Guten Tag, {user?.first_name}.
-          </Text>
-
-          <View style={{ gap: 18, marginTop: 32 }}>
-            {isManagement(user) ? (
-              <PortalCard
-                dark
-                title="Admin & CRM"
-                text="Dashboard, Pipeline, Projekte, Angebote, Rechnungen, Team und 3D-Editor."
-                onPress={() => router.push("/admin")}
-                testID="open-admin"
-              />
-            ) : null}
-            <PortalCard
-              title="Mitarbeiterportal"
-              text="Meine Projekte, Aufgaben, Termine, Bautagebuch und Uploads."
-              onPress={() => router.push("/employee")}
-              testID="open-employee"
-            />
-          </View>
-
-          <View style={{ marginTop: 26 }}>
-            <Button title="Abmelden" variant="ghost" onPress={logout} testID="logout-button" />
-          </View>
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-function PortalRow({ title, subtitle, onPress, testID, last = false }: any) {
-  const s = useStyles();
-  const { colors } = useTheme();
-  return (
-    <Pressable testID={testID} onPress={onPress} disabled={!onPress} style={[s.row, last && { borderBottomWidth: 0 }]}>
-      <View style={{ flex: 1 }}>
-        <Text style={s.rowTitle}>{title}</Text>
-        {subtitle ? <Text style={s.rowSub}>{subtitle}</Text> : null}
-      </View>
-      {onPress ? <StrokeIcon icon={ArrowUpRight01Icon} size={20} color={colors.onSurface} /> : null}
-    </Pressable>
-  );
-}
-
-function ClientDashboard() {
-  const s = useStyles();
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const { user, logout } = useAuth();
-  const { data, isLoading, refetch } = useQuery({
+  const { user } = useAuth();
+  const { data, isLoading } = useQuery({
     queryKey: ["client-dashboard"],
     queryFn: () => api("/client/dashboard"),
     refetchInterval: 20000,
   });
-
   const p = data?.active_project;
-  const headingSize = width < 700 ? 38 : 52;
+  const projectImage = abs(p?.cover || p?.cover_url || p?.photo || p?.latest_photo);
+  const big = width < 700 ? 37 : 50;
+
+  if (isLoading) return <Loading text="Projekt wird synchronisiert…" />;
 
   return (
-    <View style={s.screen}>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + 34,
-          paddingHorizontal: width < 700 ? 20 : 36,
-          paddingBottom: 70,
-        }}
-        testID="client-dashboard"
-      >
-        <View style={[s.shell, { gap: 22 }]}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 18 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.overline}>MEIN PROJEKT</Text>
-              <Text testID="greeting" style={[s.heading, { fontSize: headingSize, lineHeight: headingSize * 1.08, marginTop: 9 }]}>
-                Guten Tag, {data?.greeting_name || user?.first_name}.
-              </Text>
-            </View>
-            <Pressable onPress={logout} testID="logout-button" hitSlop={8} style={{ width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
-              <StrokeIcon icon={UserAccountIcon} size={21} color={colors.onSurface} />
-            </Pressable>
+    <ScrollView
+      style={s.screen}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{
+        paddingTop: insets.top + 24,
+        paddingHorizontal: width < 700 ? 16 : 30,
+        paddingBottom: 118,
+      }}
+      testID="control-home"
+    >
+      <View style={[s.shell, { gap: 18 }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View>
+            <Text style={s.eyebrow}>OKA BAU · CONTROL</Text>
+            <Text style={[s.title, { fontSize: big, lineHeight: big * 1.03, marginTop: 7 }]}>Guten Tag, {data?.greeting_name || user?.first_name}.</Text>
           </View>
-
-          {isLoading ? <Loading text="Projekt wird geladen…" /> : !p ? (
-            <View style={s.portalCard} testID="no-project-card">
-              <Empty
-                title="Noch keine aktiven Projekte"
-                text="Sobald OKA Bau Ihre Anfrage in ein Projekt überführt, erscheint es hier – inklusive Fortschritt, Dokumenten, Chat und 3D-Ansicht."
-                action={<Button title="Projekt anfragen" onPress={() => router.push("/anfrage")} testID="no-project-request" />}
-              />
-            </View>
-          ) : (
-            <>
-              <Animated.View entering={FadeInDown.duration(600)}>
-                <Pressable onPress={() => router.push(`/client/project/${p.id}`)} testID="active-project-card" style={s.heroCard}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                    <Text style={{ color: "rgba(255,255,255,.7)", fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.2 }}>
-                      AKTIVES PROJEKT · {p.number}
-                    </Text>
-                    <Badge status={p.status} />
-                  </View>
-
-                  <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: width < 700 ? 30 : 38, lineHeight: width < 700 ? 35 : 43, letterSpacing: -1 }}>
-                    {p.name}
-                  </Text>
-                  <Text style={{ color: "rgba(255,255,255,.7)", fontFamily: fonts.regular, fontSize: 15 }}>{p.address}</Text>
-
-                  <View style={{ gap: 9 }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-                      <Text style={{ color: "rgba(255,255,255,.72)", fontFamily: fonts.regular, fontSize: 13 }}>
-                        Aktuelle Phase · {p.stage}
-                      </Text>
-                      <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: 14 }}>{p.progress}%</Text>
-                    </View>
-                    <Progress value={p.progress} />
-                  </View>
-
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-                    <ArrowPillButton label="Mein Projekt" onPress={() => router.push(`/client/project/${p.id}`)} />
-                    <ArrowPillButton
-                      label="3D Projekt"
-                      onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "3D Projekt" } })}
-                    />
-                  </View>
-                </Pressable>
-              </Animated.View>
-
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
-                <Pressable style={s.metric} onPress={() => router.push(`/client/chat/${p.id}`)} testID="stat-messages">
-                  <Text style={s.metricValue}>{p.unread_messages}</Text>
-                  <Text style={s.metricLabel}>Ungelesene Nachrichten</Text>
-                </Pressable>
-                <Pressable style={s.metric} onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Dokumente" } })} testID="stat-documents">
-                  <Text style={s.metricValue}>{p.new_documents}</Text>
-                  <Text style={s.metricLabel}>Neue Dokumente</Text>
-                </Pressable>
-                <View style={s.metric}>
-                  <Text style={s.metricValue}>{p.progress}%</Text>
-                  <Text style={s.metricLabel}>Projektfortschritt</Text>
-                </View>
-              </View>
-
-              <View style={s.rowCard}>
-                <PortalRow
-                  title={p.project_manager ? `${p.project_manager.first_name} ${p.project_manager.last_name}` : "–"}
-                  subtitle="Projektleitung"
-                />
-                <PortalRow
-                  title={p.next_appointment ? `${p.next_appointment.type} · ${fmtDate(p.next_appointment.start, true)}` : "Kein Termin geplant"}
-                  subtitle="Nächster Termin"
-                  onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Termine" } })}
-                  testID="row-appointment"
-                />
-                <PortalRow
-                  title={p.latest_update?.title || "Noch keine Aktualisierung"}
-                  subtitle={p.latest_update ? fmtDate(p.latest_update.created_at) : "Letzte Aktualisierung"}
-                  onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Timeline" } })}
-                  testID="row-update"
-                />
-                {p.open_offer ? (
-                  <PortalRow
-                    title={`Angebot ${p.open_offer.number} · ${fmtMoney(p.open_offer.total)}`}
-                    subtitle="Offenes Angebot – jetzt ansehen"
-                    onPress={() => router.push(`/client/offer/${p.open_offer.id}`)}
-                    testID="row-offer"
-                  />
-                ) : null}
-                {p.open_invoice ? (
-                  <PortalRow
-                    title={`Rechnung ${p.open_invoice.number} · ${fmtMoney(p.open_invoice.total)}`}
-                    subtitle={`Fällig ${fmtDate(p.open_invoice.due_date)}`}
-                    onPress={() => router.push({ pathname: `/client/project/${p.id}`, params: { tab: "Rechnungen" } })}
-                    testID="row-invoice"
-                    last
-                  />
-                ) : null}
-              </View>
-
-              {data.projects.length > 1 ? (
-                <View style={{ gap: 12 }}>
-                  <Text style={s.overline}>WEITERE PROJEKTE</Text>
-                  <View style={s.rowCard}>
-                    {data.projects.filter((x: any) => x.id !== p.id).map((x: any, idx: number, arr: any[]) => (
-                      <PortalRow
-                        key={x.id}
-                        title={`${x.number} · ${x.name}`}
-                        subtitle={x.stage}
-                        onPress={() => router.push(`/client/project/${x.id}`)}
-                        last={idx === arr.length - 1}
-                      />
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-            </>
-          )}
-
-          <View style={{ alignItems: "flex-start" }}>
-            <Button title="Aktualisieren" variant="ghost" small onPress={() => refetch()} testID="refresh-dashboard" />
-          </View>
+          <Pressable style={s.icon} onPress={() => router.push("/(tabs)/profil")}>
+            <StrokeIcon icon={Notification01Icon} size={20} color={colors.onSurface} />
+          </Pressable>
         </View>
-      </ScrollView>
-    </View>
+
+        {!p ? (
+          <View style={[s.hero, { minHeight: 300 }]}>
+            <LinearGradient colors={["#161714", "#0B0C0C"]} style={s.heroOverlay}>
+              <Text style={[s.eyebrow, { color: "rgba(255,255,255,.56)" }]}>NOCH KEIN AKTIVES PROJEKT</Text>
+              <View>
+                <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: 34, letterSpacing: -1.2 }}>Ihr nächstes Projekt beginnt hier.</Text>
+                <Text style={{ color: "rgba(255,255,255,.62)", fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, marginTop: 10 }}>Senden Sie Ihre Anfrage direkt an OKA Bau.</Text>
+                <Pressable onPress={() => router.push("/anfrage")} style={{ marginTop: 20, alignSelf: "flex-start", backgroundColor: "#fff", borderRadius: 999, paddingHorizontal: 18, paddingVertical: 13 }}>
+                  <Text style={{ fontFamily: fonts.semibold, color: "#0B0C0C" }}>Projekt starten</Text>
+                </Pressable>
+              </View>
+            </LinearGradient>
+          </View>
+        ) : (
+          <>
+            <Pressable style={s.hero} onPress={() => router.push(`/client/project/${p.id}`)}>
+              {projectImage ? <Image source={{ uri: projectImage }} style={{ position: "absolute", inset: 0 }} contentFit="cover" /> : null}
+              <LinearGradient
+                colors={projectImage ? ["rgba(11,12,12,.12)", "rgba(11,12,12,.92)"] : ["#292A26", "#0B0C0C"]}
+                style={s.heroOverlay}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                  <View style={s.statusPill}><Text style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 10, letterSpacing: 1.1 }}>{String(p.status || "AKTIV").replaceAll("_", " ")}</Text></View>
+                  <Text style={{ color: "rgba(255,255,255,.58)", fontFamily: fonts.medium, fontSize: 12 }}>{p.number}</Text>
+                </View>
+
+                <View>
+                  <Text style={{ color: "rgba(255,255,255,.62)", fontFamily: fonts.medium, fontSize: 13 }}>{p.address || "OKA Bau Projekt"}</Text>
+                  <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: width < 700 ? 31 : 40, lineHeight: width < 700 ? 35 : 44, letterSpacing: -1.2, marginTop: 7 }}>{p.name}</Text>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 24 }}>
+                    <Text style={{ color: "rgba(255,255,255,.62)", fontFamily: fonts.regular, fontSize: 13 }}>{p.stage || "Projekt"}</Text>
+                    <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: 14 }}>{p.progress || 0}%</Text>
+                  </View>
+                  <View style={[s.progressTrack, { marginTop: 9 }]}>
+                    <View style={{ width: `${Math.max(0, Math.min(100, p.progress || 0))}%`, height: "100%", backgroundColor: colors.brand }} />
+                  </View>
+                </View>
+              </LinearGradient>
+            </Pressable>
+
+            <View style={s.quickGrid}>
+              {[
+                ["Verlauf", "Heute & Updates", Chat01Icon, "/(tabs)/aktivitaet"],
+                ["Medien", `${p.counts?.photos || 0} Fotos`, Camera01Icon, "/(tabs)/medien"],
+                ["Dateien", `${p.counts?.documents || 0} Dokumente`, File01Icon, "/(tabs)/dateien"],
+              ].map(([title, sub, icon, href]: any) => (
+                <Pressable key={title} style={s.quick} onPress={() => router.push(href)}>
+                  <StrokeIcon icon={icon} size={21} color={colors.onSurface} />
+                  <View>
+                    <Text style={{ fontFamily: fonts.semibold, color: colors.onSurface, fontSize: 17 }}>{title}</Text>
+                    <Text style={{ fontFamily: fonts.regular, color: colors.muted, fontSize: 12, marginTop: 3 }}>{sub}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+
+            <View>
+              <Text style={s.eyebrow}>JETZT WICHTIG</Text>
+              <View style={[s.activity, { marginTop: 10 }]}>
+                <InfoRow
+                  icon={Chat01Icon}
+                  title={p.latest_update?.title || "Projektstatus aktuell"}
+                  subtitle={p.latest_update?.created_at ? fmtDate(p.latest_update.created_at, true) : "Keine neue Meldung"}
+                  onPress={() => router.push("/(tabs)/aktivitaet")}
+                />
+                <InfoRow
+                  icon={UserAccountIcon}
+                  title={p.project_manager ? `${p.project_manager.first_name} ${p.project_manager.last_name}` : "OKA Bau Projektteam"}
+                  subtitle="Projektleitung"
+                  onPress={() => router.push(`/client/project/${p.id}?tab=Projektteam`)}
+                />
+                <InfoRow
+                  icon={ArrowRight01Icon}
+                  title={p.next_appointment ? `${p.next_appointment.type} · ${fmtDate(p.next_appointment.start, true)}` : "Kein Termin offen"}
+                  subtitle="Nächster Schritt"
+                  onPress={() => router.push(`/client/project/${p.id}?tab=Termine`)}
+                  last
+                />
+              </View>
+            </View>
+          </>
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+function InfoRow({ icon, title, subtitle, onPress, last = false }: any) {
+  const s = useStyles();
+  const { colors } = useTheme();
+  return (
+    <Pressable style={[s.activityRow, last && { borderBottomWidth: 0 }]} onPress={onPress}>
+      <View style={s.icon}><StrokeIcon icon={icon} size={19} color={colors.onSurface} /></View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.onSurface }}>{title}</Text>
+        <Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.muted, marginTop: 3 }}>{subtitle}</Text>
+      </View>
+      <StrokeIcon icon={ArrowRight01Icon} size={18} color={colors.muted} />
+    </Pressable>
   );
 }
