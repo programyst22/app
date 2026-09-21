@@ -1,359 +1,166 @@
-import React, { useEffect, useState } from "react";
-import { View, ScrollView, Pressable, Text, useWindowDimensions } from "react-native";
+import React, { useState } from "react";
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpRight01Icon, Message01Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, Camera01Icon, Chat01Icon, File01Icon } from "@hugeicons/core-free-icons";
 
 import { api, fmtDate } from "@/src/api";
-import { ProjectTwin, ZoneGrid, ZoneDetail, Zone } from "@/src/three/Experiences";
-import {
-  Badge,
-  Progress,
-  ChipRow,
-  Loading,
-  Empty,
-} from "@/src/components/ui";
-import {
-  StageStepper,
-  Timeline,
-  Updates,
-  MediaGrid,
-  BeforeAfter,
-  Appointments,
-  Documents,
-  Offers,
-  Invoices,
-  Team,
-} from "@/src/components/project-sections";
+import { ProjectTwin, ZoneDetail, ZoneGrid, Zone } from "@/src/three/Experiences";
+import { ChipRow, Loading } from "@/src/components/ui";
+import { Appointments, Documents, Invoices, Offers, StageStepper, Team, Timeline, Updates } from "@/src/components/project-sections";
 import { PremiumHeader, StrokeIcon } from "@/src/components/premium";
-import { fonts, makeStyles, useTheme, space } from "@/src/theme";
+import { fonts, makeStyles, useTheme } from "@/src/theme";
 
-const TABS = [
-  "Übersicht",
-  "3D Projekt",
-  "Fortschritt",
-  "Timeline",
-  "Fotos",
-  "Vorher / Nachher",
-  "Termine",
-  "Nachrichten",
-  "Dokumente",
-  "Angebote",
-  "Rechnungen",
-  "Projektteam",
-];
+const SECTIONS = ["Übersicht", "Räume", "Verlauf", "Mehr"];
 
 const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
-  shell: { width: "100%", maxWidth: 1180, alignSelf: "center" },
-  hero: {
-    backgroundColor: c.surfaceInverse,
-    borderRadius: 26,
-    padding: 26,
-    gap: 18,
-  },
-  overline: {
-    fontFamily: fonts.bold,
-    color: c.onSurface,
-    fontSize: 12,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-  },
-  title: {
-    fontFamily: fonts.semibold,
-    color: c.onSurface,
-    letterSpacing: -1.2,
-  },
-  body: {
-    fontFamily: fonts.regular,
-    color: c.muted,
-    fontSize: 15,
-    lineHeight: 23,
-  },
-  metric: {
-    flex: 1,
-    minWidth: 145,
-    borderRadius: 18,
-    backgroundColor: c.surfaceSecondary,
-    borderWidth: 1,
-    borderColor: c.border,
-    padding: 20,
-    gap: 7,
-  },
-  metricValue: {
-    fontFamily: fonts.semibold,
-    color: c.onSurface,
-    fontSize: 32,
-    letterSpacing: -1,
-  },
-  metricLabel: {
-    fontFamily: fonts.regular,
-    color: c.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  infoCard: {
-    borderRadius: 20,
-    backgroundColor: c.surfaceSecondary,
-    borderWidth: 1,
-    borderColor: c.border,
-    overflow: "hidden",
-  },
-  infoRow: {
-    minHeight: 72,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: c.divider,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  sectionCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surfaceSecondary,
-    padding: 22,
-    gap: 16,
-  },
+  shell: { width: "100%", maxWidth: 980, alignSelf: "center" },
+  eyebrow: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 1.6, color: c.muted, textTransform: "uppercase" },
+  title: { fontFamily: fonts.semibold, color: c.onSurface, letterSpacing: -1.3 },
+  body: { fontFamily: fonts.regular, color: c.muted, fontSize: 14, lineHeight: 22 },
+  hero: { borderRadius: 30, padding: 24, backgroundColor: c.surfaceInverse, gap: 18 },
+  progressTrack: { height: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,.18)", overflow: "hidden" },
+  action: { flex: 1, minWidth: 140, minHeight: 110, padding: 17, borderRadius: 22, backgroundColor: c.surfaceSecondary, borderWidth: 1, borderColor: c.border, justifyContent: "space-between" },
+  section: { borderRadius: 24, backgroundColor: c.surfaceSecondary, borderWidth: 1, borderColor: c.border, padding: 20, gap: 15 },
+  infoRow: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.divider, flexDirection: "row", alignItems: "center", gap: 12 },
 }));
-
-function InfoRow({ title, subtitle, onPress, last = false }: any) {
-  const s = useStyles();
-  const { colors } = useTheme();
-  return (
-    <Pressable onPress={onPress} disabled={!onPress} style={[s.infoRow, last && { borderBottomWidth: 0 }]}>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: fonts.semibold, color: colors.onSurface, fontSize: 15 }}>{title}</Text>
-        <Text style={[s.body, { fontSize: 13, lineHeight: 19, marginTop: 3 }]}>{subtitle}</Text>
-      </View>
-      {onPress ? <StrokeIcon icon={ArrowUpRight01Icon} size={19} color={colors.onSurface} /> : null}
-    </Pressable>
-  );
-}
 
 export default function ClientProject() {
   const s = useStyles();
   const { colors } = useTheme();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { id, tab: initialTab } = useLocalSearchParams<{ id: string; tab?: string }>();
-  const [tab, setTab] = useState(initialTab && TABS.includes(initialTab) ? initialTab : "Übersicht");
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
+  const initial = tab === "Projektteam" || tab === "Termine" || tab === "Dokumente" || tab === "Angebote" || tab === "Rechnungen" ? "Mehr" : "Übersicht";
+  const [section, setSection] = useState(initial);
   const [zone, setZone] = useState<Zone | null>(null);
 
-  const { data: p, isLoading } = useQuery({
-    queryKey: ["project", id],
-    queryFn: () => api(`/projects/${id}`),
-  });
-  const { data: zones } = useQuery({
-    queryKey: ["zones", id],
-    queryFn: () => api(`/projects/${id}/zones`),
-  });
-  const { data: model } = useQuery({
-    queryKey: ["model", id],
-    queryFn: () => api(`/projects/${id}/model`),
-  });
-  const { data: meta } = useQuery({
-    queryKey: ["meta"],
-    queryFn: () => api("/meta"),
-  });
+  const { data: p, isLoading } = useQuery({ queryKey: ["project", id], queryFn: () => api(`/projects/${id}`) });
+  const { data: zones } = useQuery({ queryKey: ["zones", id], queryFn: () => api(`/projects/${id}/zones`) });
+  const { data: model } = useQuery({ queryKey: ["model", id], queryFn: () => api(`/projects/${id}/model`) });
+  const { data: meta } = useQuery({ queryKey: ["meta"], queryFn: () => api("/meta") });
 
-  useEffect(() => {
-    if (tab === "Nachrichten") {
-      router.push(`/client/chat/${id}`);
-      setTab("Übersicht");
-    }
-  }, [tab, id, router]);
+  if (isLoading || !p) return <Loading text="Projekt wird geladen…" />;
 
-  const pagePad = width < 700 ? 20 : 34;
-  const titleSize = width < 700 ? 31 : 42;
+  const pagePad = width < 700 ? 16 : 30;
+  const titleSize = width < 700 ? 33 : 44;
 
   return (
     <View style={s.screen}>
-      <PremiumHeader title={p?.name || "Mein Projekt"} subtitle={p?.number} />
-      <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}>
-        <ChipRow items={TABS} value={tab} onChange={setTab} testID="project-tabs" />
+      <PremiumHeader title={p.name} subtitle={p.number} />
+      <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface }}>
+        <ChipRow items={SECTIONS} value={section} onChange={setSection} />
       </View>
 
-      {isLoading || !p ? (
-        <Loading text="Projekt wird geladen…" />
-      ) : (
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: pagePad,
-            paddingTop: 24,
-            paddingBottom: 70,
-          }}
-          testID={`project-section-${tab}`}
-        >
-          <View style={[s.shell, { gap: 20 }]}>
-            {tab === "Übersicht" ? (
-              <>
-                <View style={s.hero}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                    <Text style={{ color: "rgba(255,255,255,.68)", fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.2 }}>
-                      {p.number}
-                    </Text>
-                    <Badge status={p.status} />
-                  </View>
-                  <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: titleSize, lineHeight: titleSize * 1.08, letterSpacing: -1.2 }}>
-                    {p.name}
-                  </Text>
-                  <Text style={{ color: "rgba(255,255,255,.72)", fontFamily: fonts.regular, fontSize: 15 }}>
-                    {p.address}
-                  </Text>
-
-                  <View style={{ gap: 8 }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-                      <Text style={{ color: "rgba(255,255,255,.72)", fontFamily: fonts.regular, fontSize: 13 }}>
-                        {p.stage}
-                      </Text>
-                      <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: 14 }}>{p.progress}%</Text>
-                    </View>
-                    <Progress value={p.progress} />
-                  </View>
-
-                  <Pressable
-                    onPress={() => setTab("3D Projekt")}
-                    testID="overview-open-3d"
-                    style={{
-                      minHeight: 48,
-                      alignSelf: "flex-start",
-                      paddingHorizontal: 18,
-                      borderRadius: 999,
-                      backgroundColor: "#fff",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 10,
-                    }}
-                  >
-                    <Text style={{ color: "#111", fontFamily: fonts.semibold, fontSize: 14 }}>
-                      {p.has_3d_model ? "3D-Modell ansehen" : "Fortschritt in 3D"}
-                    </Text>
-                    <StrokeIcon icon={ArrowUpRight01Icon} size={18} color="#111" />
-                  </Pressable>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: pagePad, paddingTop: 20, paddingBottom: 54 }}>
+        <View style={[s.shell, { gap: 18 }]}>
+          {section === "Übersicht" ? (
+            <>
+              <View style={s.hero}>
+                <Text style={{ color: "rgba(255,255,255,.56)", fontFamily: fonts.bold, fontSize: 10, letterSpacing: 1.4 }}>{String(p.status || "AKTIV").replaceAll("_", " ")}</Text>
+                <View>
+                  <Text style={{ color: "rgba(255,255,255,.58)", fontFamily: fonts.regular, fontSize: 13 }}>{p.address || "OKA Bau Projekt"}</Text>
+                  <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: titleSize, lineHeight: titleSize * 1.04, letterSpacing: -1.2, marginTop: 6 }}>{p.name}</Text>
                 </View>
-
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
-                  {[
-                    ["Nachrichten", p.counts.unread_messages, () => router.push(`/client/chat/${id}`), "ov-messages"],
-                    ["Fotos", p.counts.photos, () => setTab("Fotos"), "ov-photos"],
-                    ["Dokumente", p.counts.documents, () => setTab("Dokumente"), "ov-documents"],
-                    ["Offene Angebote", p.counts.open_offers, () => setTab("Angebote"), "ov-offers"],
-                  ].map(([label, value, onPress, testID]: any) => (
-                    <Pressable key={label} onPress={onPress} style={s.metric} testID={testID}>
-                      <Text style={s.metricValue}>{value}</Text>
-                      <Text style={s.metricLabel}>{label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                <View style={s.infoCard}>
-                  <InfoRow
-                    title={p.project_manager ? `${p.project_manager.first_name} ${p.project_manager.last_name}` : "–"}
-                    subtitle="Projektleitung"
-                    onPress={() => setTab("Projektteam")}
-                  />
-                  <InfoRow
-                    title={p.next_appointment ? `${p.next_appointment.type} · ${fmtDate(p.next_appointment.start, true)}` : "Kein Termin geplant"}
-                    subtitle="Nächster Termin"
-                    onPress={() => setTab("Termine")}
-                  />
-                  <InfoRow
-                    title={p.latest_update?.title || "Noch keine Aktualisierung"}
-                    subtitle={p.latest_update ? fmtDate(p.latest_update.created_at, true) : "Letzte Aktualisierung"}
-                    onPress={() => setTab("Timeline")}
-                    last={!p.client_notes}
-                  />
-                  {p.client_notes ? (
-                    <View style={{ paddingHorizontal: 20, paddingVertical: 18 }}>
-                      <Text style={s.overline}>HINWEISE VON OKA BAU</Text>
-                      <Text style={[s.body, { marginTop: 8 }]}>{p.client_notes}</Text>
-                    </View>
-                  ) : null}
-                </View>
-
-                {p.description ? (
-                  <View style={s.sectionCard}>
-                    <Text style={s.overline}>BESCHREIBUNG</Text>
-                    <Text style={s.body}>{p.description}</Text>
+                <View>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ color: "rgba(255,255,255,.62)", fontFamily: fonts.regular, fontSize: 13 }}>{p.stage}</Text>
+                    <Text style={{ color: "#fff", fontFamily: fonts.semibold, fontSize: 14 }}>{p.progress}%</Text>
                   </View>
-                ) : null}
-              </>
-            ) : null}
-
-            {tab === "3D Projekt" ? (
-              <>
-                <Text style={s.overline}>PROJEKT 3D · DIGITALER ZWILLING</Text>
-                {(zones?.length || model) ? (
-                  <>
-                    <ProjectTwin
-                      zones={zones || []}
-                      model={model}
-                      start={p.start_date || p.created_at}
-                      end={p.planned_finish}
-                      onSelectZone={setZone}
-                      selectedId={zone?.id}
-                    />
-                    {zone ? (
-                      <ZoneDetail zone={zone} />
-                    ) : (
-                      <Text style={s.body}>
-                        Wählen Sie einen Raum oder ein Element, um Status, Fortschritt, Fotos und Dokumente zu sehen.
-                      </Text>
-                    )}
-                  </>
-                ) : (
-                  <View style={s.sectionCard} testID="no-3d-fallback">
-                    <Text style={[s.title, { fontSize: 23, lineHeight: 29 }]}>Noch kein 3D-Modell hinterlegt</Text>
-                    <Text style={s.body}>
-                      Ihr Projekt wird aktuell in der Phase „{p.stage}“ bearbeitet. Sobald OKA Bau Bereiche oder ein Modell freigibt,
-                      sehen Sie hier den digitalen Zwilling.
-                    </Text>
-                    <Progress value={p.progress} />
-                    <Text style={s.body}>{p.progress}% Gesamtfortschritt</Text>
-                  </View>
-                )}
-              </>
-            ) : null}
-
-            {tab === "Fortschritt" ? (
-              <>
-                <View style={s.sectionCard}>
-                  <Text style={s.overline}>GESAMTFORTSCHRITT</Text>
-                  <Text style={[s.title, { fontSize: 42 }]}>{p.progress}%</Text>
-                  <Progress value={p.progress} />
+                  <View style={[s.progressTrack, { marginTop: 9 }]}><View style={{ width: `${Math.max(0, Math.min(100, p.progress || 0))}%`, height: "100%", backgroundColor: colors.brand }} /></View>
                 </View>
-                <Text style={s.overline}>BEREICHE</Text>
-                {zones?.length ? (
-                  <ZoneGrid zones={zones} onSelectZone={setZone} selectedId={zone?.id} />
-                ) : (
-                  <Text style={s.body}>Noch keine Bereiche definiert.</Text>
-                )}
-                {zone ? <ZoneDetail zone={zone} /> : null}
-                <Text style={s.overline}>PROJEKTPHASEN</Text>
+              </View>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                <ActionCard icon={Chat01Icon} title="Chat" subtitle={`${p.counts?.unread_messages || 0} ungelesen`} onPress={() => router.push(`/client/chat/${id}`)} />
+                <ActionCard icon={Camera01Icon} title="Medien" subtitle={`${p.counts?.photos || 0} Fotos`} onPress={() => router.push("/(tabs)/medien")} />
+                <ActionCard icon={File01Icon} title="Dateien" subtitle={`${p.counts?.documents || 0} Dokumente`} onPress={() => router.push("/(tabs)/dateien")} />
+              </View>
+
+              <View style={s.section}>
+                <Text style={s.eyebrow}>PROJEKT PULSE</Text>
                 <StageStepper stages={meta?.workflow_stages || []} current={p.stage} />
-              </>
-            ) : null}
+              </View>
 
-            {tab === "Timeline" ? (
-              <>
-                <Updates projectId={id} />
-                <Text style={s.overline}>VERLAUF</Text>
-                <Timeline projectId={id} />
-              </>
-            ) : null}
-            {tab === "Fotos" ? <MediaGrid projectId={id} /> : null}
-            {tab === "Vorher / Nachher" ? <BeforeAfter projectId={id} /> : null}
-            {tab === "Termine" ? <Appointments projectId={id} canConfirm /> : null}
-            {tab === "Dokumente" ? <Documents projectId={id} /> : null}
-            {tab === "Angebote" ? <Offers projectId={id} /> : null}
-            {tab === "Rechnungen" ? <Invoices projectId={id} /> : null}
-            {tab === "Projektteam" ? <Team project={p} /> : null}
-          </View>
-        </ScrollView>
-      )}
+              <View style={s.section}>
+                <Text style={s.eyebrow}>JETZT WICHTIG</Text>
+                <InfoRow title={p.latest_update?.title || "Projekt ist aktuell"} subtitle={p.latest_update?.created_at ? fmtDate(p.latest_update.created_at, true) : "Noch keine Aktualisierung"} />
+                <InfoRow title={p.next_appointment ? `${p.next_appointment.type} · ${fmtDate(p.next_appointment.start, true)}` : "Kein Termin geplant"} subtitle="Nächster Termin" />
+                <InfoRow title={p.project_manager ? `${p.project_manager.first_name} ${p.project_manager.last_name}` : "OKA Bau"} subtitle="Projektleitung" last />
+              </View>
+            </>
+          ) : null}
+
+          {section === "Räume" ? (
+            <>
+              <View>
+                <Text style={s.eyebrow}>OKA SPACE</Text>
+                <Text style={[s.title, { fontSize: titleSize, lineHeight: titleSize * 1.05, marginTop: 7 }]}>Ihr Objekt als{"\n"}digitaler Raum.</Text>
+                <Text style={[s.body, { marginTop: 10 }]}>Tippen Sie auf einen Bereich, um Status und Fortschritt zu sehen.</Text>
+              </View>
+              {(zones?.length || model) ? (
+                <>
+                  <ProjectTwin zones={zones || []} model={model} start={p.start_date || p.created_at} end={p.planned_finish} onSelectZone={setZone} selectedId={zone?.id} />
+                  {zones?.length ? <ZoneGrid zones={zones} onSelectZone={setZone} selectedId={zone?.id} /> : null}
+                  {zone ? <ZoneDetail zone={zone} /> : null}
+                </>
+              ) : (
+                <View style={s.section}>
+                  <Text style={[s.title, { fontSize: 23 }]}>Digitaler Zwilling wird vorbereitet.</Text>
+                  <Text style={s.body}>Sobald Räume oder ein 3D-Modell freigegeben sind, erscheinen sie hier automatisch.</Text>
+                </View>
+              )}
+            </>
+          ) : null}
+
+          {section === "Verlauf" ? (
+            <>
+              <Updates projectId={id} />
+              <Text style={s.eyebrow}>GESAMTER VERLAUF</Text>
+              <Timeline projectId={id} />
+            </>
+          ) : null}
+
+          {section === "Mehr" ? (
+            <>
+              <View style={s.section}><Text style={s.eyebrow}>TERMINE</Text><Appointments projectId={id} canConfirm /></View>
+              <View style={s.section}><Text style={s.eyebrow}>DOKUMENTE</Text><Documents projectId={id} /></View>
+              <View style={s.section}><Text style={s.eyebrow}>ANGEBOTE</Text><Offers projectId={id} /></View>
+              <View style={s.section}><Text style={s.eyebrow}>RECHNUNGEN</Text><Invoices projectId={id} /></View>
+              <View style={s.section}><Text style={s.eyebrow}>PROJEKTTEAM</Text><Team project={p} /></View>
+            </>
+          ) : null}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+function ActionCard({ icon, title, subtitle, onPress }: any) {
+  const s = useStyles();
+  const { colors } = useTheme();
+  return (
+    <Pressable style={s.action} onPress={onPress}>
+      <StrokeIcon icon={icon} size={21} color={colors.onSurface} />
+      <View>
+        <Text style={{ fontFamily: fonts.semibold, color: colors.onSurface, fontSize: 16 }}>{title}</Text>
+        <Text style={{ fontFamily: fonts.regular, color: colors.muted, fontSize: 12, marginTop: 3 }}>{subtitle}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function InfoRow({ title, subtitle, last = false }: any) {
+  const s = useStyles();
+  const { colors } = useTheme();
+  return (
+    <View style={[s.infoRow, last && { borderBottomWidth: 0 }]}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: fonts.semibold, color: colors.onSurface, fontSize: 14 }}>{title}</Text>
+        <Text style={{ fontFamily: fonts.regular, color: colors.muted, fontSize: 12, marginTop: 3 }}>{subtitle}</Text>
+      </View>
+      <StrokeIcon icon={ArrowRight01Icon} size={17} color={colors.muted} />
     </View>
   );
 }
