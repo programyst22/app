@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "OKA Bau",
+    "name": "OKA Control",
     "slug": "oka-bau",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "okabau",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.emergent.okabuildplatform.hpgnts",
@@ -40,9 +40,9 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-image.png",
-          "imageWidth": 200,
+          "imageWidth": 168,
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#0B0C0C"
         }
       ],
       "expo-font",
@@ -55,7 +55,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#D96C40"
+          "color": "#E66A32"
         }
       ],
       "expo-image-picker",
