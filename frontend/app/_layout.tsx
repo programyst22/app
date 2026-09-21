@@ -115,7 +115,7 @@ export default function RootLayout() {
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
                 <ToastProvider>
-                  <StatusBar style="dark" />
+                  <StatusBar style="auto" />
                   <Stack screenOptions={{ headerShown: false, animation: "fade_from_bottom" }} />
                   <PushRouting />
                   <PushNudge />
