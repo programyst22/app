@@ -130,8 +130,7 @@ function walk(dir) {
 
 console.log(failed ? "\nQA RESULT: FAIL" : "\nQA RESULT: PASS");
 process.exit(failed ? 1 : 0);
-
-const controlHome = path.join(root, "app/(tabs)/mein-projekt.tsx");
+\nconst controlHome = path.join(root, "app/(tabs)/mein-projekt.tsx");
 if (fs.existsSync(controlHome)) {
   const src = fs.readFileSync(controlHome, "utf8");
   for (const marker of ["OKA BAU · CONTROL", "JETZT WICHTIG", "Projekt Pulse"]) {
@@ -145,4 +144,4 @@ if (fs.existsSync(controlTabs)) {
     if (!src.includes(marker)) fail(`control tab missing: ${marker}`);
   }
 }
-if (!failed) pass("OKA Control navigation and home markers present");
+if (!failed) pass("OKA Control navigation and home markers present");\n\nconsole.log(failed ? "\nQA RESULT: FAIL" : "\nQA RESULT: PASS");\nprocess.exit(failed ? 1 : 0);\n
