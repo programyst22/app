@@ -2,17 +2,24 @@ import React from "react";
 import { Platform } from "react-native";
 import { Tabs } from "expo-router";
 import { BlurView } from "expo-blur";
-import Ionicons from "@react-native-vector-icons/ionicons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  Camera01Icon,
+  DashboardSquare01Icon,
+  File01Icon,
+  Message01Icon,
+  UserAccountIcon,
+} from "@hugeicons/core-free-icons";
 
 import { isStaff, useAuth } from "@/src/auth";
 import { fonts, useTheme } from "@/src/theme";
 
 const CONTROL_TABS = [
-  { name: "mein-projekt", title: "Control", icon: "grid-outline", active: "grid" },
-  { name: "aktivitaet", title: "Verlauf", icon: "pulse-outline", active: "pulse" },
-  { name: "medien", title: "Medien", icon: "images-outline", active: "images" },
-  { name: "dateien", title: "Dateien", icon: "folder-open-outline", active: "folder-open" },
-  { name: "profil", title: "Profil", icon: "person-outline", active: "person" },
+  { name: "mein-projekt", title: "Control", icon: DashboardSquare01Icon },
+  { name: "aktivitaet", title: "Verlauf", icon: Message01Icon },
+  { name: "medien", title: "Medien", icon: Camera01Icon },
+  { name: "dateien", title: "Dateien", icon: File01Icon },
+  { name: "profil", title: "Profil", icon: UserAccountIcon },
 ] as const;
 
 const LEGACY = ["index", "leistungen", "projekte", "kontakt"] as const;
@@ -73,8 +80,8 @@ export default function TabsLayout() {
             title: t.title,
             href: staff ? null : undefined,
             tabBarButtonTestID: `control-tab-${t.name}`,
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={(focused ? t.active : t.icon) as any} size={21} color={color} />
+            tabBarIcon: ({ color }) => (
+              <HugeiconsIcon icon={t.icon} size={21} color={color} strokeWidth={1.5} />
             ),
           }}
         />
