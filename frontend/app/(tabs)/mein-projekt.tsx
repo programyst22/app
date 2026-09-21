@@ -308,7 +308,7 @@ function ClientControl() {
                 colors={projectImage ? ["rgba(11,12,12,.12)", "rgba(11,12,12,.92)"] : ["#292A26", "#0B0C0C"]}
                 style={s.heroOverlay}
               >
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <Text style={{ color: "rgba(255,255,255,.52)", fontFamily: fonts.bold, fontSize: 10, letterSpacing: 1.4 }}>PROJECT PULSE</Text>\n                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                   <View style={s.statusPill}><Text style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 10, letterSpacing: 1.1 }}>{String(p.status || "AKTIV").replaceAll("_", " ")}</Text></View>
                   <Text style={{ color: "rgba(255,255,255,.58)", fontFamily: fonts.medium, fontSize: 12 }}>{p.number}</Text>
                 </View>
