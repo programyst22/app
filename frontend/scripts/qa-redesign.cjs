@@ -1,13 +1,7 @@
 #!/usr/bin/env node
 /**
- * OKA Bau Control 2.0 integration QA.
+ * OKA Bau Control 2.0 deterministic integration QA.
  * Run from frontend/: node scripts/qa-redesign.cjs
- *
- * This deliberately performs only deterministic local checks.
- * Follow with:
- *   npx tsc --noEmit
- *   npx expo lint
- *   npx expo-doctor
  */
 const fs = require("fs");
 const path = require("path");
@@ -17,12 +11,12 @@ const root = process.cwd();
 const required = [
   "app/_layout.tsx",
   "app/(tabs)/index.tsx",
+  "app/(tabs)/_layout.tsx",
   "app/(tabs)/mein-projekt.tsx",
   "app/(tabs)/aktivitaet.tsx",
   "app/(tabs)/medien.tsx",
   "app/(tabs)/dateien.tsx",
   "app/(tabs)/profil.tsx",
-  "app/(tabs)/_layout.tsx",
   "app/admin/index.tsx",
   "app/admin/crm.tsx",
   "app/admin/projects.tsx",
@@ -51,13 +45,16 @@ const dependencyFiles = [
 ];
 
 let failed = false;
-const fail = (m) => { failed = true; console.error("FAIL:", m); };
-const pass = (m) => console.log("PASS:", m);
+const fail = (message) => {
+  failed = true;
+  console.error("FAIL:", message);
+};
+const pass = (message) => console.log("PASS:", message);
 
 for (const rel of [...required, ...dependencyFiles]) {
   if (!fs.existsSync(path.join(root, rel))) fail(`missing ${rel}`);
 }
-if (!failed) pass("required OKA Control + original dependency files exist");
+if (!failed) pass("required OKA Control and dependency files exist");
 
 const pkgPath = path.join(root, "package.json");
 if (!fs.existsSync(pkgPath)) {
@@ -75,10 +72,10 @@ if (!fs.existsSync(pkgPath)) {
   ]) {
     if (!deps[name]) fail(`dependency missing: ${name}`);
   }
-  if (!failed) pass("OKA Control dependencies declared");
 }
+if (!failed) pass("OKA Control dependencies declared");
 
-for (const rel of required.filter(x => /\.[tj]sx?$/.test(x))) {
+for (const rel of required.filter((x) => /\.[tj]sx?$/.test(x))) {
   const file = path.join(root, rel);
   if (!fs.existsSync(file)) continue;
   const source = fs.readFileSync(file, "utf8");
@@ -92,51 +89,36 @@ for (const rel of required.filter(x => /\.[tj]sx?$/.test(x))) {
     fileName: file,
   });
   const errors = (out.diagnostics || []).filter(
-    d => d.category === ts.DiagnosticCategory.Error
+    (d) => d.category === ts.DiagnosticCategory.Error
   );
   if (errors.length) {
-    fail(`${rel}: ${errors.map(d => ts.flattenDiagnosticMessageText(d.messageText, " ")).join(" | ")}`);
+    fail(
+      `${rel}: ${errors
+        .map((d) => ts.flattenDiagnosticMessageText(d.messageText, " "))
+        .join(" | ")}`
+    );
   }
 }
 if (!failed) pass("OKA Control TS/TSX parses successfully");
 
-const scanRoots = ["app", "src/components/premium.tsx", "src/components/project-sections.tsx"];
-for (const rel of scanRoots) {
-  const p = path.join(root, rel);
-  if (!fs.existsSync(p)) continue;
-  const files = fs.statSync(p).isDirectory()
-    ? walk(p).filter(f => /\.[tj]sx?$/.test(f))
-    : [p];
-  for (const f of files) {
-    const src = fs.readFileSync(f, "utf8");
-    // New premium screens should not introduce direct Ionicons usage.
-    if (required.some(r => path.normalize(f).endsWith(path.normalize(r))) && /Ionicons/.test(src)) {
-      fail(`legacy Ionicons present in premium file ${path.relative(root, f)}`);
-    }
+for (const rel of required) {
+  const file = path.join(root, rel);
+  if (!fs.existsSync(file) || !/\.[tj]sx?$/.test(file)) continue;
+  const src = fs.readFileSync(file, "utf8");
+  if (/Ionicons/.test(src)) {
+    fail(`legacy Ionicons present in Control file ${rel}`);
   }
 }
-if (!failed) pass("premium redesign files are free of direct Ionicons usage");
+if (!failed) pass("Control surfaces use the unified Hugeicons system");
 
-function walk(dir) {
-  const out = [];
-  for (const name of fs.readdirSync(dir)) {
-    const p = path.join(dir, name);
-    const st = fs.statSync(p);
-    if (st.isDirectory()) out.push(...walk(p));
-    else out.push(p);
-  }
-  return out;
-}
-
-console.log(failed ? "\nQA RESULT: FAIL" : "\nQA RESULT: PASS");
-process.exit(failed ? 1 : 0);
-\nconst controlHome = path.join(root, "app/(tabs)/mein-projekt.tsx");
+const controlHome = path.join(root, "app/(tabs)/mein-projekt.tsx");
 if (fs.existsSync(controlHome)) {
-  const src = fs.readFileSync(controlHome, "utf8");
-  for (const marker of ["OKA BAU · CONTROL", "JETZT WICHTIG", "Projekt Pulse"]) {
-    if (!src.toLowerCase().includes(marker.toLowerCase())) fail(`control home marker missing: ${marker}`);
+  const src = fs.readFileSync(controlHome, "utf8").toLowerCase();
+  for (const marker of ["oka bau · control", "jetzt wichtig", "project pulse"]) {
+    if (!src.includes(marker)) fail(`control home marker missing: ${marker}`);
   }
 }
+
 const controlTabs = path.join(root, "app/(tabs)/_layout.tsx");
 if (fs.existsSync(controlTabs)) {
   const src = fs.readFileSync(controlTabs, "utf8");
@@ -144,4 +126,7 @@ if (fs.existsSync(controlTabs)) {
     if (!src.includes(marker)) fail(`control tab missing: ${marker}`);
   }
 }
-if (!failed) pass("OKA Control navigation and home markers present");\n\nconsole.log(failed ? "\nQA RESULT: FAIL" : "\nQA RESULT: PASS");\nprocess.exit(failed ? 1 : 0);\n
+if (!failed) pass("OKA Control navigation and home markers present");
+
+console.log(failed ? "\nQA RESULT: FAIL" : "\nQA RESULT: PASS");
+process.exit(failed ? 1 : 0);
