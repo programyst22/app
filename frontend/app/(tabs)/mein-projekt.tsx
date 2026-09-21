@@ -283,7 +283,7 @@ function ClientControl() {
             <Text style={[s.title, { fontSize: big, lineHeight: big * 1.03, marginTop: 7 }]}>Guten Tag, {data?.greeting_name || user?.first_name}.</Text>
           </View>
           <Pressable style={s.icon} onPress={() => router.push("/(tabs)/profil")}>
-            <StrokeIcon icon={Notification01Icon} size={20} color={colors.onSurface} />
+            <StrokeIcon icon={UserAccountIcon} size={20} color={colors.onSurface} />
           </Pressable>
         </View>
 
@@ -329,7 +329,8 @@ function ClientControl() {
 
             <View style={s.quickGrid}>
               {[
-                ["Verlauf", "Heute & Updates", Chat01Icon, "/(tabs)/aktivitaet"],
+                ["Chat", "Direkt zum Projektteam", Chat01Icon, `/client/chat/${p.id}`],
+                ["Verlauf", "Heute & Updates", ArrowRight01Icon, "/(tabs)/aktivitaet"],
                 ["Medien", `${p.counts?.photos || 0} Fotos`, Camera01Icon, "/(tabs)/medien"],
                 ["Dateien", `${p.counts?.documents || 0} Dokumente`, File01Icon, "/(tabs)/dateien"],
               ].map(([title, sub, icon, href]: any) => (
