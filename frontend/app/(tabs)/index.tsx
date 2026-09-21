@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   AppState,
+  Platform,
   Linking,
   Pressable,
   ScrollView,
@@ -11,7 +12,7 @@ import {
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { VideoView, useVideoPlayer } from "expo-video";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -203,7 +204,7 @@ function FaqItem({ item, index, open, onPress }: { item: any; index: number; ope
   );
 }
 
-export default function Home() {
+function MarketingHome() {
   const s = useStyles();
   const { colors } = useTheme();
   const router = useRouter();
@@ -717,4 +718,10 @@ export default function Home() {
       </RevealProvider>
     </View>
   );
+}
+
+
+export default function Home() {
+  if (Platform.OS !== "web") return <Redirect href="/(tabs)/mein-projekt" />;
+  return <MarketingHome />;
 }
