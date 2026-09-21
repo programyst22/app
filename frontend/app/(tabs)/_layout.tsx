@@ -2,60 +2,67 @@ import React from "react";
 import { Platform } from "react-native";
 import { Tabs } from "expo-router";
 import { BlurView } from "expo-blur";
-import { HugeiconsIcon } from "@hugeicons/react-native";
-import {
-  Camera01Icon,
-  DashboardSquare01Icon,
-  File01Icon,
-  Message01Icon,
-  UserAccountIcon,
-} from "@hugeicons/core-free-icons";
-import { useAuth, isStaff } from "@/src/auth";
-import { useTheme } from "@/src/theme";
+import Ionicons from "@react-native-vector-icons/ionicons";
+
+import { isStaff, useAuth } from "@/src/auth";
+import { fonts, useTheme } from "@/src/theme";
 
 const CONTROL_TABS = [
-  { name: "mein-projekt", title: "Control", icon: DashboardSquare01Icon },
-  { name: "aktivitaet", title: "Verlauf", icon: Message01Icon },
-  { name: "medien", title: "Medien", icon: Camera01Icon },
-  { name: "dateien", title: "Dateien", icon: File01Icon },
-  { name: "profil", title: "Profil", icon: UserAccountIcon },
+  { name: "mein-projekt", title: "Control", icon: "grid-outline", active: "grid" },
+  { name: "aktivitaet", title: "Verlauf", icon: "pulse-outline", active: "pulse" },
+  { name: "medien", title: "Medien", icon: "images-outline", active: "images" },
+  { name: "dateien", title: "Dateien", icon: "folder-open-outline", active: "folder-open" },
+  { name: "profil", title: "Profil", icon: "person-outline", active: "person" },
 ] as const;
+
+const LEGACY = ["index", "leistungen", "projekte", "kontakt"] as const;
 
 export default function TabsLayout() {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const hideBar = user === undefined || !user || isStaff(user);
+  const staff = isStaff(user);
 
   return (
     <Tabs
       initialRouteName="mein-projekt"
       screenOptions={{
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.onSurface,
         tabBarInactiveTintColor: colors.muted,
-        tabBarHideOnKeyboard: true,
-        tabBarStyle: hideBar ? { display: "none" } : {
-          position: "absolute",
-          left: 14,
-          right: 14,
-          bottom: Platform.OS === "ios" ? 18 : 12,
-          height: 68,
-          paddingTop: 7,
-          paddingBottom: 7,
-          borderTopWidth: 0,
-          borderRadius: 24,
-          backgroundColor: Platform.OS === "android" ? "rgba(251,250,247,.96)" : "transparent",
-          shadowColor: "#000",
-          shadowOpacity: 0.12,
-          shadowRadius: 24,
-          shadowOffset: { width: 0, height: 10 },
-          elevation: 12,
+        tabBarStyle: staff
+          ? { display: "none" }
+          : {
+              position: "absolute",
+              left: 14,
+              right: 14,
+              bottom: Platform.OS === "ios" ? 8 : 12,
+              height: 70,
+              borderTopWidth: 0,
+              borderWidth: 1,
+              borderColor: "rgba(11,12,12,0.08)",
+              borderRadius: 26,
+              backgroundColor: Platform.OS === "ios" ? "transparent" : "rgba(251,250,247,0.96)",
+              overflow: "hidden",
+              elevation: 12,
+              shadowColor: "#000",
+              shadowOpacity: 0.10,
+              shadowRadius: 22,
+              shadowOffset: { width: 0, height: 10 },
+            },
+        tabBarItemStyle: {
+          paddingTop: 8,
+          paddingBottom: Platform.OS === "ios" ? 2 : 7,
         },
-        tabBarItemStyle: { borderRadius: 18 },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginTop: 1 },
-        tabBarBackground: hideBar ? undefined : () => (
-          <BlurView intensity={70} tint="light" style={{ flex: 1, borderRadius: 24, overflow: "hidden" }} />
-        ),
+        tabBarLabelStyle: {
+          fontFamily: fonts.semibold,
+          fontSize: 10,
+          letterSpacing: 0.1,
+        },
+        tabBarBackground:
+          !staff && Platform.OS === "ios"
+            ? () => <BlurView intensity={78} tint="light" style={{ flex: 1 }} />
+            : undefined,
       }}
     >
       {CONTROL_TABS.map((t) => (
@@ -64,15 +71,18 @@ export default function TabsLayout() {
           name={t.name}
           options={{
             title: t.title,
-            tabBarButtonTestID: `tab-${t.name}`,
-            tabBarIcon: ({ color }) => <HugeiconsIcon icon={t.icon} size={21} color={color} strokeWidth={1.5} />,
+            href: staff ? null : undefined,
+            tabBarButtonTestID: `control-tab-${t.name}`,
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={(focused ? t.active : t.icon) as any} size={21} color={color} />
+            ),
           }}
         />
       ))}
-      <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="leistungen" options={{ href: null }} />
-      <Tabs.Screen name="projekte" options={{ href: null }} />
-      <Tabs.Screen name="kontakt" options={{ href: null }} />
+
+      {LEGACY.map((name) => (
+        <Tabs.Screen key={name} name={name} options={{ href: null }} />
+      ))}
     </Tabs>
   );
 }
