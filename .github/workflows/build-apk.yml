@@ -10,7 +10,7 @@ on:
       - '.github/workflows/build-apk.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: apk-${{ github.ref }}
@@ -29,38 +29,6 @@ jobs:
       EXPO_PUBLIC_BACKEND_URL: ${{ secrets.EXPO_PUBLIC_BACKEND_URL || vars.EXPO_PUBLIC_BACKEND_URL || 'https://oka-build-platform.preview.emergentagent.com' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Apply reviewed V8 source patch once
-        working-directory: .
-        run: |
-          python3 - <<'PY'
-          import hashlib, pathlib, subprocess, zipfile
-          root = pathlib.Path.cwd()
-          archive = root / 'OKA-Bau-Android-build-fixes.zip'
-          marker = root / '.oka-android-patch-applied'
-          expected = '3b2b95a5c660bfa2840103d36222596ae7b0c009a92444e90571ed068f0256ff'
-          if marker.exists() and marker.read_text().strip() == expected:
-              print('Reviewed source patch already applied; preserving subsequent fixes')
-              raise SystemExit(0)
-          assert hashlib.sha256(archive.read_bytes()).hexdigest() == expected, 'Unexpected patch archive'
-          files = []
-          with zipfile.ZipFile(archive) as patch:
-              for entry in patch.infolist():
-                  if entry.is_dir() or entry.filename.startswith('.github/'):
-                      continue
-                  relative = pathlib.PurePosixPath(entry.filename)
-                  assert not relative.is_absolute() and '..' not in relative.parts
-                  assert relative.parts[0] == 'frontend' or len(relative.parts) == 1
-                  target = root.joinpath(*relative.parts)
-                  target.parent.mkdir(parents=True, exist_ok=True)
-                  target.write_bytes(patch.read(entry))
-                  files.append(entry.filename)
-          marker.write_text(expected + '\n')
-          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
-          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
-          subprocess.run(['git', 'add', '--', *files, marker.name], check=True)
-          subprocess.run(['git', 'commit', '-m', 'Apply V8 redesign and verified Android build fixes'], check=True)
-          subprocess.run(['git', 'push', 'origin', 'HEAD:main'], check=True)
-          PY
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -71,6 +39,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - uses: gradle/actions/setup-gradle@v4
       - name: Install dependencies
         run: npm ci --no-audit --no-fund

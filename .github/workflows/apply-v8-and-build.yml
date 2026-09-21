@@ -2,7 +2,7 @@ name: Build Applied V8 APK
 on:
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
   build:
     uses: ./.github/workflows/build-apk.yml
