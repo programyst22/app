@@ -1,58 +1,73 @@
 import React from "react";
 import { Platform } from "react-native";
 import { Tabs } from "expo-router";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { BlurView } from "expo-blur";
 import Ionicons from "@react-native-vector-icons/ionicons";
+import { useAuth, isStaff } from "@/src/auth";
 import { useTheme } from "@/src/theme";
 
-const TABS = [
-  { name: "index", title: "Home", icon: "home-outline", active: "home", sf: "house" },
-  { name: "leistungen", title: "Leistungen", icon: "layers-outline", active: "layers", sf: "square.stack.3d.up" },
-  { name: "projekte", title: "Projekte", icon: "images-outline", active: "images", sf: "photo.on.rectangle" },
-  { name: "mein-projekt", title: "Mein Projekt", icon: "cube-outline", active: "cube", sf: "cube" },
-  { name: "kontakt", title: "Kontakt", icon: "chatbubble-ellipses-outline", active: "chatbubble-ellipses", sf: "bubble.left.and.bubble.right" },
+const CONTROL_TABS = [
+  { name: "mein-projekt", title: "Control", icon: "grid-outline", active: "grid" },
+  { name: "aktivitaet", title: "Verlauf", icon: "pulse-outline", active: "pulse" },
+  { name: "medien", title: "Medien", icon: "images-outline", active: "images" },
+  { name: "dateien", title: "Dateien", icon: "folder-outline", active: "folder" },
+  { name: "profil", title: "Profil", icon: "person-outline", active: "person" },
 ] as const;
-
-const isIOS26 = Platform.OS === "ios" && parseInt(String(Platform.Version), 10) >= 26;
 
 export default function TabsLayout() {
   const { colors } = useTheme();
-  if (isIOS26) {
-    return (
-      <NativeTabs tintColor={colors.brandPrimary}>
-        {TABS.map((t) => (
-          <NativeTabs.Trigger key={t.name} name={t.name}>
-            <NativeTabs.Trigger.Icon sf={t.sf as any} />
-            <NativeTabs.Trigger.Label>{t.title}</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-        ))}
-      </NativeTabs>
-    );
-  }
+  const { user } = useAuth();
+  const hideBar = user === undefined || !user || isStaff(user);
+
   return (
     <Tabs
+      initialRouteName="mein-projekt"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.onSurface,
         tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { backgroundColor: Platform.OS === "ios" ? "transparent" : colors.surfaceSecondary, borderTopColor: colors.border, ...(Platform.OS === "web" ? { height: 64 } : {}) },
-        tabBarItemStyle: { alignSelf: "center" },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-        tabBarBackground: Platform.OS === "ios" ? () => <BlurView intensity={60} tint="light" style={{ flex: 1 }} /> : undefined,
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: hideBar ? { display: "none" } : {
+          position: "absolute",
+          left: 14,
+          right: 14,
+          bottom: Platform.OS === "ios" ? 18 : 12,
+          height: 68,
+          paddingTop: 7,
+          paddingBottom: 7,
+          borderTopWidth: 0,
+          borderRadius: 24,
+          backgroundColor: Platform.OS === "android" ? "rgba(251,250,247,.96)" : "transparent",
+          shadowColor: "#000",
+          shadowOpacity: 0.12,
+          shadowRadius: 24,
+          shadowOffset: { width: 0, height: 10 },
+          elevation: 12,
+        },
+        tabBarItemStyle: { borderRadius: 18 },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginTop: 1 },
+        tabBarBackground: hideBar ? undefined : () => (
+          <BlurView intensity={70} tint="light" style={{ flex: 1, borderRadius: 24, overflow: "hidden" }} />
+        ),
       }}
     >
-      {TABS.map((t) => (
+      {CONTROL_TABS.map((t) => (
         <Tabs.Screen
           key={t.name}
           name={t.name}
           options={{
             title: t.title,
             tabBarButtonTestID: `tab-${t.name}`,
-            tabBarIcon: ({ color, focused }) => <Ionicons name={(focused ? t.active : t.icon) as any} size={22} color={color} />,
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={(focused ? t.active : t.icon) as any} size={21} color={color} />
+            ),
           }}
         />
       ))}
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="leistungen" options={{ href: null }} />
+      <Tabs.Screen name="projekte" options={{ href: null }} />
+      <Tabs.Screen name="kontakt" options={{ href: null }} />
     </Tabs>
   );
 }
