@@ -7,7 +7,6 @@ from typing import Optional, Any
 import jwt, bcrypt, httpx, requests
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request
-from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.concurrency import run_in_threadpool
 
 ROOT_DIR = Path(__file__).parent
@@ -15,8 +14,14 @@ load_dotenv(ROOT_DIR / ".env")
 
 logger = logging.getLogger("oka")
 
-client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-db = client[os.environ["DB_NAME"]]
+if os.environ.get("DATABASE_URL"):
+    from pgmongo import PgDocumentDB
+    db = PgDocumentDB()
+    client = db
+else:
+    from motor.motor_asyncio import AsyncIOMotorClient
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db = client[os.environ["DB_NAME"]]
 
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ISSUER = os.environ.get("JWT_ISSUER", "oka-bau-api")
