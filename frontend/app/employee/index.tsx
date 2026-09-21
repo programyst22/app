@@ -47,7 +47,7 @@ export default function EmployeeHome() {
       <View style={[s.shell, { gap: 18 }]}>
         <View>
           <Text style={s.eyebrow}>OKA CREW · HEUTE</Text>
-          <Text style={[s.title, { fontSize: big, lineHeight: big * 1.03, marginTop: 7 }]}>Guten Tag,{"\n"}{user.first_name}.</Text>
+          <Text style={[s.title, { fontSize: big, lineHeight: big * 1.03, marginTop: 7 }]}>Guten Tag,{"\n"}{user!.first_name}.</Text>
         </View>
 
         <View style={s.hero}>
