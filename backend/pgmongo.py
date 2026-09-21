@@ -163,6 +163,9 @@ class Collection:
         await self.db.pool.execute("""INSERT INTO oka_documents(collection,doc_id,data,updated_at)
             VALUES($1,$2,$3::jsonb,now()) ON CONFLICT(collection,doc_id)
             DO UPDATE SET data=EXCLUDED.data,updated_at=now()""",self.name,did,json.dumps(clean,ensure_ascii=False))
+    async def create_index(self,*args,**kwargs):
+        # Compatibility no-op. Application-level uniqueness checks remain enforced.
+        return kwargs.get("name") or (str(args[0]) if args else "idx")
     async def insert_one(self,d):
         async with self.db._write: await self._save(d)
         return _R(1)
