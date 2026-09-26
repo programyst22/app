@@ -1,9 +1,0 @@
-name: Build Android APK (legacy entry)
-on:
-  workflow_dispatch:
-permissions:
-  contents: read
-jobs:
-  build:
-    uses: ./.github/workflows/build-apk.yml
-    secrets: inherit

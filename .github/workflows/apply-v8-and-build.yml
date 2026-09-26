@@ -1,9 +1,0 @@
-name: Build Applied V8 APK
-on:
-  workflow_dispatch:
-permissions:
-  contents: read
-jobs:
-  build:
-    uses: ./.github/workflows/build-apk.yml
-    secrets: inherit
